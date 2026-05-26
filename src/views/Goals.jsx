@@ -67,28 +67,31 @@ export function Goals() {
       {/* Horizon timeline */}
       <Card>
         <CardHeader eyebrow="2026" title="The horizon" />
-        <div className="relative h-24">
-          <div className="absolute top-1/2 left-0 right-0 h-px bg-border-subtle" />
-          {[0,1,2,3,4,5,6,7,8,9,10,11].map(m => {
-            const date = new Date(2026, m, 1)
-            return (
-              <div key={m} className="absolute -translate-x-1/2" style={{ left: `${(m / 11) * 100}%`, top: 0, bottom: 0 }}>
-                <div className="w-px h-3 bg-border-subtle mx-auto" />
-                <div className="text-[9px] text-text-tertiary mt-1 text-center font-mono">{date.toLocaleDateString('en-US', { month: 'short' })}</div>
-              </div>
-            )
-          })}
+        <div className="relative h-28">
+          {/* Goal dots — top half, two staggered rows above the timeline */}
           {state.goals.filter(g => g.type === 'annual' || g.type === 'quarterly').map((g, idx) => {
             const target = new Date(g.targetDate)
             const m = target.getMonth()
-            const top = idx % 2 === 0 ? '20%' : '60%'
+            const top = idx % 2 === 0 ? '15%' : '35%'
             const color = g.status === 'behind' ? '#ff5e5e' : g.status === 'ahead' ? '#2ee5a6' : '#4a9eff'
             return (
-              <div key={g.id} className="absolute -translate-x-1/2 group" style={{ left: `${(m / 11) * 100}%`, top }}>
+              <div key={g.id} className="absolute -translate-x-1/2 group z-10" style={{ left: `${(m / 11) * 100}%`, top }}>
                 <div className="w-2.5 h-2.5 rounded-full ring-2 ring-bg-base" style={{ background: color }} />
-                <div className="absolute left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap px-2 py-1 rounded bg-bg-elevated border border-border-subtle text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute left-1/2 -translate-x-1/2 -top-7 whitespace-nowrap px-2 py-1 rounded bg-bg-elevated border border-border-subtle text-[10px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   {g.name}
                 </div>
+              </div>
+            )
+          })}
+          {/* Horizontal timeline line at 60% */}
+          <div className="absolute left-0 right-0 h-px bg-border-subtle" style={{ top: '60%' }} />
+          {/* Month ticks + labels — bottom area, below the line */}
+          {[0,1,2,3,4,5,6,7,8,9,10,11].map(m => {
+            const date = new Date(2026, m, 1)
+            return (
+              <div key={m} className="absolute -translate-x-1/2 flex flex-col items-center" style={{ left: `${(m / 11) * 100}%`, top: '60%' }}>
+                <div className="w-px h-2 bg-border-subtle" />
+                <div className="text-[9px] text-text-tertiary mt-1 font-mono">{date.toLocaleDateString('en-US', { month: 'short' })}</div>
               </div>
             )
           })}

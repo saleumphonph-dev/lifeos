@@ -110,7 +110,10 @@
       "Bash(gh repo *)",
       "Bash(git init *)",
       "Bash(git config *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(gh secret *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:saleumphonph-dev.github.io)"
     ]
   }
 }

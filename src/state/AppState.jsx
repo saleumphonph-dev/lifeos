@@ -103,6 +103,23 @@ function reducer(state, action) {
       }
     case 'habit.remove':
       return { ...state, habits: state.habits.filter(h => h.id !== action.id) }
+    case 'project.add':
+      return {
+        ...state,
+        projects: [
+          { id: uid(), color: '#4a9eff', status: 'active', progress: 0, ...action.project },
+          ...state.projects,
+        ],
+      }
+    case 'project.update':
+      return { ...state, projects: state.projects.map(p => (p.id === action.id ? { ...p, ...action.patch } : p)) }
+    case 'project.remove':
+      // Also remove this project's tasks so we don't orphan them
+      return {
+        ...state,
+        projects: state.projects.filter(p => p.id !== action.id),
+        tasks: state.tasks.filter(t => t.projectId !== action.id),
+      }
     case 'settings.update':
       return { ...state, settings: { ...state.settings, ...action.patch } }
     case 'state.reset':

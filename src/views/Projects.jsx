@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, Clock, Hash, TrendingUp, LayoutGrid, GitBranch } from 'lucide-react'
+import { Plus, Clock, Hash, TrendingUp, LayoutGrid, GitBranch, X } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge, priorityTone } from '../components/ui/Badge'
 import { useApp } from '../state/AppState'
@@ -18,11 +18,45 @@ const COLUMNS = [
   { id: 'done',        label: 'Done',        accent: '#2ee5a6' },
 ]
 
+const PROJECT_COLORS = ['#4a9eff', '#2ee5a6', '#ffb547', '#a78bfa', '#ff7eb3', '#5eead4', '#ff5e5e']
+
 export function Projects() {
   const { state, dispatch } = useApp()
   const [view, setView] = useState('kanban') // 'kanban' | 'matrix'
   const [filterProject, setFilterProject] = useState('all')
   const [activeId, setActiveId] = useState(null)
+  const [addingProject, setAddingProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [newProjectColor, setNewProjectColor] = useState('#4a9eff')
+
+  function handleAddProject(e) {
+    e.preventDefault()
+    if (!newProjectName.trim()) return
+    dispatch({ type: 'project.add', project: { name: newProjectName.trim(), color: newProjectColor } })
+    setNewProjectName('')
+    setAddingProject(false)
+  }
+
+  function handleRemoveProject(id, name) {
+    if (confirm(`Remove project "${name}"? All its tasks will also be deleted.`)) {
+      dispatch({ type: 'project.remove', id })
+      if (filterProject === id) setFilterProject('all')
+    }
+  }
+
+  function handleAddTaskToColumn(status) {
+    const title = prompt('New task title:')
+    if (!title?.trim()) return
+    // Use the first project, or filtered project if one is active
+    const projectId = filterProject !== 'all'
+      ? filterProject
+      : state.projects[0]?.id
+    if (!projectId) {
+      alert('Create a project first before adding tasks.')
+      return
+    }
+    dispatch({ type: 'task.add', task: { title: title.trim(), status, projectId } })
+  }
 
   const tasksFiltered = useMemo(() => {
     return state.tasks.filter(t => filterProject === 'all' || t.projectId === filterProject)
@@ -94,26 +128,71 @@ export function Projects() {
       </div>
 
       {/* Project chips */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         {state.projects.map(p => {
           const tasksFor = state.tasks.filter(t => t.projectId === p.id && t.status !== 'done').length
           return (
-            <button
-              key={p.id}
-              onClick={() => setFilterProject(filterProject === p.id ? 'all' : p.id)}
-              className={cn(
-                'flex items-center gap-2 h-8 px-3 rounded-sm border text-[12px] transition-colors',
-                filterProject === p.id
-                  ? 'bg-white/[0.08] border-border text-text-primary'
-                  : 'bg-white/[0.03] border-border-subtle text-text-secondary hover:bg-white/[0.06]'
-              )}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} />
-              {p.name}
-              <span className="font-mono text-[10px] text-text-tertiary">{tasksFor}</span>
-            </button>
+            <div key={p.id} className="relative group/chip">
+              <button
+                onClick={() => setFilterProject(filterProject === p.id ? 'all' : p.id)}
+                className={cn(
+                  'flex items-center gap-2 h-8 pl-3 pr-3 rounded-sm border text-[12px] transition-colors',
+                  filterProject === p.id
+                    ? 'bg-white/[0.08] border-border text-text-primary'
+                    : 'bg-white/[0.03] border-border-subtle text-text-secondary hover:bg-white/[0.06]'
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} />
+                {p.name}
+                <span className="font-mono text-[10px] text-text-tertiary">{tasksFor}</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemoveProject(p.id, p.name) }}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-bg-elevated border border-border-subtle flex items-center justify-center text-text-quaternary hover:text-accent-red hover:border-accent-red/50 opacity-0 group-hover/chip:opacity-100 transition-opacity"
+                title="Remove project"
+              >
+                <X size={9} strokeWidth={2.5} />
+              </button>
+            </div>
           )
         })}
+
+        {addingProject ? (
+          <form onSubmit={handleAddProject} className="flex items-center gap-2 h-8 pl-2 pr-2 rounded-sm border border-border bg-white/[0.05]">
+            <div className="flex gap-1">
+              {PROJECT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setNewProjectColor(c)}
+                  className={cn(
+                    'w-4 h-4 rounded-full border transition-all',
+                    newProjectColor === c ? 'border-white scale-110' : 'border-transparent'
+                  )}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+            <input
+              autoFocus
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="Project name"
+              className="h-6 bg-transparent text-[12px] text-text-primary outline-none w-32"
+            />
+            <button type="submit" className="text-[11px] text-accent-blue hover:text-accent-emerald font-medium">Add</button>
+            <button type="button" onClick={() => { setAddingProject(false); setNewProjectName('') }} className="text-text-quaternary hover:text-text-secondary">
+              <X size={11} />
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setAddingProject(true)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-sm border border-dashed border-border-subtle text-[12px] text-text-tertiary hover:bg-white/[0.04] hover:text-text-secondary transition-colors"
+          >
+            <Plus size={11} /> New project
+          </button>
+        )}
       </div>
 
       {view === 'kanban' ? (
@@ -126,7 +205,7 @@ export function Projects() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {COLUMNS.map(col => (
-              <Column key={col.id} column={col} tasks={tasksByStatus[col.id]} projects={state.projects} />
+              <Column key={col.id} column={col} tasks={tasksByStatus[col.id]} projects={state.projects} onAddTask={() => handleAddTaskToColumn(col.id)} />
             ))}
           </div>
           <DragOverlay>
@@ -142,7 +221,7 @@ export function Projects() {
   )
 }
 
-function Column({ column, tasks, projects }) {
+function Column({ column, tasks, projects, onAddTask }) {
   const { setNodeRef, isOver } = useSortable({ id: column.id, data: { type: 'column' } })
   return (
     <div
@@ -158,7 +237,13 @@ function Column({ column, tasks, projects }) {
           <span className="text-[11px] uppercase tracking-[0.14em] text-text-secondary font-semibold">{column.label}</span>
           <span className="font-mono text-[10px] text-text-quaternary">{tasks.length}</span>
         </div>
-        <button className="w-5 h-5 rounded-sm hover:bg-white/[0.08] flex items-center justify-center text-text-tertiary"><Plus size={11} /></button>
+        <button
+          onClick={onAddTask}
+          className="w-5 h-5 rounded-sm hover:bg-white/[0.08] flex items-center justify-center text-text-tertiary hover:text-text-primary"
+          title="Add task"
+        >
+          <Plus size={11} />
+        </button>
       </div>
 
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>

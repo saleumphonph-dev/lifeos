@@ -94,6 +94,34 @@ export default function Journal() {
     dispatch({ type: 'journal.upsert', entry: { ...next, date: activeDate } })
   }
 
+  function addDecision(text, reviewDate) {
+    if (!text.trim()) return
+    const decision = { text: text.trim(), status: 'open', reviewDate: reviewDate || undefined }
+    const next = { ...draft, decisions: [...(draft.decisions || []), decision] }
+    setDraft(next)
+    dispatch({ type: 'journal.upsert', entry: { ...next, date: activeDate } })
+  }
+
+  function cycleDecisionStatus(idx) {
+    // open → review → confirmed → open
+    const order = ['open', 'review', 'confirmed']
+    const decisions = (draft.decisions || []).map((d, i) => {
+      if (i !== idx) return d
+      const cur = d.status || 'open'
+      const ni = (order.indexOf(cur) + 1) % order.length
+      return { ...d, status: order[ni] }
+    })
+    const next = { ...draft, decisions }
+    setDraft(next)
+    dispatch({ type: 'journal.upsert', entry: { ...next, date: activeDate } })
+  }
+
+  function removeDecision(idx) {
+    const next = { ...draft, decisions: (draft.decisions || []).filter((_, i) => i !== idx) }
+    setDraft(next)
+    dispatch({ type: 'journal.upsert', entry: { ...next, date: activeDate } })
+  }
+
   const recentDates = useMemo(() => {
     const dates = new Set([todayISO(), ...state.journal.map(j => j.date)])
     return Array.from(dates).sort().reverse().slice(0, 14)
@@ -241,28 +269,52 @@ export default function Journal() {
             title="What you're deciding"
             action={<Badge tone="purple"><Sparkles size={9} className="mr-1" />Auto-resurface</Badge>}
           />
-          <ul className="space-y-2">
+          <ul className="space-y-2 mb-3">
             {(draft.decisions || []).map((d, i) => (
-              <li key={i} className="flex items-center gap-3 p-3 rounded-sm bg-white/[0.025] border border-border-subtle">
-                <span className={cn(
-                  'w-2 h-2 rounded-full',
-                  d.status === 'confirmed' ? 'bg-accent-emerald' :
-                  d.status === 'review' ? 'bg-accent-amber' :
-                  'bg-text-quaternary'
-                )} />
+              <li key={i} className="group flex items-center gap-3 p-3 rounded-sm bg-white/[0.025] border border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => cycleDecisionStatus(i)}
+                  title="Click to cycle status (open → review → confirmed)"
+                  className={cn(
+                    'w-2 h-2 rounded-full shrink-0 transition-colors',
+                    d.status === 'confirmed' ? 'bg-accent-emerald' :
+                    d.status === 'review' ? 'bg-accent-amber' :
+                    'bg-text-quaternary'
+                  )}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-text-primary">{d.text}</div>
                   {d.reviewDate && <div className="text-[10px] text-text-tertiary mt-0.5">Review by {d.reviewDate}</div>}
                 </div>
-                <Badge tone={d.status === 'confirmed' ? 'emerald' : d.status === 'review' ? 'amber' : 'default'}>
-                  {d.status}
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => cycleDecisionStatus(i)}
+                  className="shrink-0"
+                  title="Click to change status"
+                >
+                  <Badge tone={d.status === 'confirmed' ? 'emerald' : d.status === 'review' ? 'amber' : 'default'}>
+                    {d.status || 'open'}
+                  </Badge>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeDecision(i)}
+                  className="opacity-0 group-hover:opacity-100 text-text-quaternary hover:text-accent-red text-[14px] leading-none w-5 h-5 flex items-center justify-center"
+                  title="Remove decision"
+                >
+                  ×
+                </button>
               </li>
             ))}
             {(!draft.decisions || draft.decisions.length === 0) && (
-              <li className="text-[12px] text-text-tertiary italic">No open decisions logged for this day.</li>
+              <li className="text-[12px] text-text-tertiary italic px-1">No open decisions logged for this day.</li>
             )}
           </ul>
+          <DecisionForm onAdd={addDecision} />
+          <p className="text-[10px] text-text-quaternary mt-2 leading-relaxed">
+            Tip: click the status badge or the dot to cycle open → review → confirmed.
+          </p>
         </Card>
       </div>
     </div>
@@ -308,6 +360,44 @@ function ListPanel({ title, accent, items, placeholder, onAdd, onRemove }) {
         </button>
       </form>
     </Card>
+  )
+}
+
+function DecisionForm({ onAdd }) {
+  const [text, setText] = useState('')
+  const [reviewDate, setReviewDate] = useState('')
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!text.trim()) return
+        onAdd(text, reviewDate)
+        setText('')
+        setReviewDate('')
+      }}
+      className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+    >
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="What's the decision? (e.g. Hire a junior dev for Liepngarm)"
+        className="flex-1 h-9 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] outline-none focus:border-border"
+      />
+      <input
+        type="date"
+        value={reviewDate}
+        onChange={(e) => setReviewDate(e.target.value)}
+        title="Optional review-by date"
+        className="h-9 px-2.5 rounded-sm bg-white/[0.04] border border-border-subtle text-[12px] text-text-secondary outline-none focus:border-border sm:w-[150px]"
+      />
+      <button
+        type="submit"
+        disabled={!text.trim()}
+        className="h-9 px-4 rounded-sm bg-accent-blue text-white text-[12px] font-medium disabled:opacity-40 inline-flex items-center gap-1.5"
+      >
+        <Plus size={12} /> Add decision
+      </button>
+    </form>
   )
 }
 

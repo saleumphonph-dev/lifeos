@@ -18,18 +18,20 @@ export default function Analytics() {
     return state.projects.map(p => ({
       name: p.name.split(' ')[0],
       color: p.color,
-      value: state.focusSessions.filter(s => s.projectId === p.id).reduce((sum, s) => sum + s.duration, 0),
+      value: state.focusSessions.filter(s => s.projectId === p.id).reduce((sum, s) => sum + (s.duration || 0), 0),
     }))
   }, [state.projects, state.focusSessions])
 
   const dailyFocus = useMemo(() => buildDailyFocus(state.focusSessions, 14), [state.focusSessions])
   const qualityTrend = useMemo(() => buildQualityTrend(state.focusSessions, 14), [state.focusSessions])
 
-  const totalFocusHrs = (state.focusSessions.reduce((s, x) => s + x.duration, 0) / 60).toFixed(1)
-  const avgQuality = (state.focusSessions.reduce((s, x) => s + x.qualityScore, 0) / Math.max(1, state.focusSessions.length)).toFixed(1)
-  const completionRate = Math.round(
-    (state.tasks.filter(t => t.status === 'done').length / Math.max(1, state.tasks.length)) * 100
-  )
+  const totalFocusHrs = (state.focusSessions.reduce((s, x) => s + (x.duration || 0), 0) / 60).toFixed(1)
+  const avgQuality = state.focusSessions.length > 0
+    ? (state.focusSessions.reduce((s, x) => s + (x.qualityScore || 0), 0) / state.focusSessions.length).toFixed(1)
+    : '0.0'
+  const completionRate = state.tasks.length > 0
+    ? Math.round((state.tasks.filter(t => t.status === 'done').length / state.tasks.length) * 100)
+    : 0
 
   return (
     <div className="space-y-5">
@@ -52,12 +54,12 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — computed from real state */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile label="Total focus" value={totalFocusHrs} unit="hrs" delta={14} deltaLabel="vs prev" icon={Brain} accent="#4a9eff" />
-        <StatTile label="Avg quality" value={avgQuality} unit="/10" delta={3.6} deltaLabel="trend" icon={Sparkles} accent="#a78bfa" />
-        <StatTile label="Completion" value={completionRate} unit="%" delta={5} icon={Target} accent="#2ee5a6" />
-        <StatTile label="Sessions" value={state.focusSessions.length} delta={-4} icon={Activity} accent="#ffb547" />
+        <StatTile label="Total focus" value={totalFocusHrs} unit="hrs" deltaLabel="all sessions" icon={Brain} accent="#4a9eff" />
+        <StatTile label="Avg quality" value={avgQuality} unit="/10" deltaLabel="all sessions" icon={Sparkles} accent="#a78bfa" />
+        <StatTile label="Completion" value={completionRate} unit="%" deltaLabel={`${state.tasks.filter(t => t.status === 'done').length}/${state.tasks.length} tasks`} icon={Target} accent="#2ee5a6" />
+        <StatTile label="Sessions" value={state.focusSessions.length} deltaLabel="logged" icon={Activity} accent="#ffb547" />
       </div>
 
       {/* Heatmap */}
@@ -137,9 +139,20 @@ export default function Analytics() {
           <CardHeader eyebrow="Cycle integrity" title="Plan vs actual" />
           <div className="space-y-3">
             {state.projects.slice(0, 5).map(p => {
-              const plan = p.effort.total
-              const actual = p.effort.invested
-              const pct = Math.min(100, (actual / plan) * 100)
+              // Plan = sum of estimatedHours across the project's tasks.
+              // Actual = focus minutes logged against this project (converted to hours).
+              // Fall back to the legacy `effort` field if a seeded project still has it.
+              const planFromTasks = state.tasks
+                .filter(t => t.projectId === p.id)
+                .reduce((sum, t) => sum + (t.estimatedHours || 0), 0)
+              const actualFromSessions = Math.round(
+                state.focusSessions
+                  .filter(s => s.projectId === p.id)
+                  .reduce((sum, s) => sum + (s.duration || 0), 0) / 60
+              )
+              const plan = planFromTasks || p.effort?.total || 0
+              const actual = actualFromSessions || p.effort?.invested || 0
+              const pct = plan > 0 ? Math.min(100, (actual / plan) * 100) : 0
               return (
                 <div key={p.id}>
                   <div className="flex items-center justify-between mb-1.5 text-[12px]">
@@ -157,6 +170,9 @@ export default function Analytics() {
                 </div>
               )
             })}
+            {state.projects.length === 0 && (
+              <div className="text-[12px] text-text-tertiary italic">No projects yet.</div>
+            )}
           </div>
         </Card>
       </div>
@@ -169,7 +185,7 @@ function buildHeatmap(sessions, days) {
   sessions.forEach(s => {
     const d = s.startedAt?.slice(0, 10)
     if (!d) return
-    map[d] = (map[d] || 0) + s.duration
+    map[d] = (map[d] || 0) + (s.duration || 0)
   })
   const out = []
   const today = new Date()
@@ -236,7 +252,7 @@ function buildDailyFocus(sessions, days) {
   sessions.forEach(s => {
     const d = s.startedAt?.slice(0, 10)
     if (!d) return
-    map[d] = (map[d] || 0) + s.duration
+    map[d] = (map[d] || 0) + (s.duration || 0)
   })
   const out = []
   const today = new Date()
@@ -255,7 +271,7 @@ function buildQualityTrend(sessions, days) {
     const d = s.startedAt?.slice(0, 10)
     if (!d) return
     if (!map[d]) map[d] = { sum: 0, n: 0 }
-    map[d].sum += s.qualityScore
+    map[d].sum += (s.qualityScore || 0)
     map[d].n += 1
   })
   const out = []

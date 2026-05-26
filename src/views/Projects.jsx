@@ -58,6 +58,12 @@ export default function Projects() {
     dispatch({ type: 'task.add', task: { title: title.trim(), status, projectId } })
   }
 
+  function handleRemoveTask(id, title) {
+    if (confirm(`Remove task "${title}"?`)) {
+      dispatch({ type: 'task.remove', id })
+    }
+  }
+
   const tasksFiltered = useMemo(() => {
     return state.tasks.filter(t => filterProject === 'all' || t.projectId === filterProject)
   }, [state.tasks, filterProject])
@@ -205,7 +211,14 @@ export default function Projects() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {COLUMNS.map(col => (
-              <Column key={col.id} column={col} tasks={tasksByStatus[col.id]} projects={state.projects} onAddTask={() => handleAddTaskToColumn(col.id)} />
+              <Column
+                key={col.id}
+                column={col}
+                tasks={tasksByStatus[col.id]}
+                projects={state.projects}
+                onAddTask={() => handleAddTaskToColumn(col.id)}
+                onRemoveTask={handleRemoveTask}
+              />
             ))}
           </div>
           <DragOverlay>
@@ -221,7 +234,7 @@ export default function Projects() {
   )
 }
 
-function Column({ column, tasks, projects, onAddTask }) {
+function Column({ column, tasks, projects, onAddTask, onRemoveTask }) {
   const { setNodeRef, isOver } = useSortable({ id: column.id, data: { type: 'column' } })
   return (
     <div
@@ -250,7 +263,7 @@ function Column({ column, tasks, projects, onAddTask }) {
         <div className="space-y-2 flex-1">
           {tasks.map(t => {
             const project = projects.find(p => p.id === t.projectId)
-            return <SortableTask key={t.id} task={t} project={project} />
+            return <SortableTask key={t.id} task={t} project={project} onRemove={onRemoveTask} />
           })}
           {tasks.length === 0 && (
             <div className="h-20 rounded-sm border border-dashed border-border-subtle flex items-center justify-center text-[11px] text-text-quaternary">
@@ -263,30 +276,47 @@ function Column({ column, tasks, projects, onAddTask }) {
   )
 }
 
-function SortableTask({ task, project }) {
+function SortableTask({ task, project, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
   }
+  // Spread drag listeners on the wrapper, but the × button inside TaskCard
+  // calls stopPropagation on pointerdown so it doesn't trigger a drag.
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} project={project} />
+      <TaskCard task={task} project={project} onRemove={onRemove} />
     </div>
   )
 }
 
-function TaskCard({ task, project, dragging }) {
+function TaskCard({ task, project, dragging, onRemove }) {
   if (!task) return null
   return (
     <div
       className={cn(
-        'group p-3 rounded-sm bg-bg-elevated border border-border-subtle hover:border-border cursor-grab active:cursor-grabbing transition-colors',
+        'group relative p-3 rounded-sm bg-bg-elevated border border-border-subtle hover:border-border cursor-grab active:cursor-grabbing transition-colors',
         dragging && 'shadow-2xl border-border bg-bg-elevated rotate-[2deg]'
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
+      {onRemove && (
+        <button
+          type="button"
+          // Stop pointer down from bubbling to the drag listener
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(task.id, task.title)
+          }}
+          className="absolute top-1.5 right-1.5 w-5 h-5 rounded-sm flex items-center justify-center text-text-quaternary hover:text-accent-red hover:bg-white/[0.08] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          title="Remove task"
+        >
+          <X size={11} />
+        </button>
+      )}
+      <div className="flex items-start justify-between gap-2 mb-2 pr-5">
         <p className="text-[13px] text-text-primary leading-snug flex-1">{task.title}</p>
         <Badge tone={priorityTone[task.priority]}>{task.priority}</Badge>
       </div>
@@ -295,8 +325,8 @@ function TaskCard({ task, project, dragging }) {
         <span className="text-[10px] text-text-tertiary truncate">{project?.name}</span>
       </div>
       <div className="flex items-center gap-3 text-[10px] text-text-tertiary font-mono tnum">
-        <span className="flex items-center gap-1"><Clock size={9} /> {task.estimatedHours}h</span>
-        <span className="flex items-center gap-1"><TrendingUp size={9} /> ICE {task.iceScore.toFixed(1)}</span>
+        <span className="flex items-center gap-1"><Clock size={9} /> {task.estimatedHours ?? 1}h</span>
+        <span className="flex items-center gap-1"><TrendingUp size={9} /> ICE {(task.iceScore ?? 0).toFixed(1)}</span>
         {task.dueDate && <span className="ml-auto text-text-secondary">{relativeDate(task.dueDate)}</span>}
       </div>
       {task.tags?.length > 0 && (

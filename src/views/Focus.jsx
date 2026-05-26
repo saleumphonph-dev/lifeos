@@ -10,7 +10,7 @@ const PRESETS = [
   { label: '90 / 20', focus: 90, rest: 20 },
 ]
 
-export function Focus() {
+export default function Focus() {
   const { state, dispatch } = useApp()
   const navigate = useNavigate()
   const [preset, setPreset] = useState(PRESETS[0])

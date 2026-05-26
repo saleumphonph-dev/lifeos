@@ -1,17 +1,28 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { AppShell } from './components/layout/AppShell'
 import { AppStateProvider } from './state/AppState'
 import { AuthProvider, useIsAuthenticated } from './state/AuthState'
 import { isSupabaseReady } from './lib/supabase'
-import { Dashboard } from './views/Dashboard'
-import { Projects } from './views/Projects'
-import { Focus } from './views/Focus'
-import { Analytics } from './views/Analytics'
-import { Journal } from './views/Journal'
-import { Goals } from './views/Goals'
-import { Habits } from './views/Habits'
-import { AIAssistant } from './views/AIAssistant'
 import { Login } from './views/Login'
+
+// Lazy load all route views for code-splitting
+const Dashboard = lazy(() => import('./views/Dashboard'))
+const Projects = lazy(() => import('./views/Projects'))
+const Focus = lazy(() => import('./views/Focus'))
+const Analytics = lazy(() => import('./views/Analytics'))
+const Journal = lazy(() => import('./views/Journal'))
+const Goals = lazy(() => import('./views/Goals'))
+const Habits = lazy(() => import('./views/Habits'))
+const AIAssistant = lazy(() => import('./views/AIAssistant'))
+
+function RouteLoader() {
+  return (
+    <div className="min-h-screen bg-bg-deep flex items-center justify-center">
+      <div className="w-5 h-5 rounded-full border-2 border-accent-blue/30 border-t-accent-blue animate-spin" />
+    </div>
+  )
+}
 
 function AuthGuard({ children }) {
   const { isAuth, loading } = useIsAuthenticated()
@@ -20,11 +31,7 @@ function AuthGuard({ children }) {
   if (!isSupabaseReady) return children
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-bg-deep flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-accent-blue/30 border-t-accent-blue animate-spin" />
-      </div>
-    )
+    return <RouteLoader />
   }
 
   if (!isAuth) return <Navigate to="/login" replace />
@@ -45,14 +52,14 @@ export default function App() {
             }
           >
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/focus" element={<Focus />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/habits" element={<Habits />} />
-            <Route path="/ai" element={<AIAssistant />} />
+            <Route path="/dashboard" element={<Suspense fallback={<RouteLoader />}><Dashboard /></Suspense>} />
+            <Route path="/projects" element={<Suspense fallback={<RouteLoader />}><Projects /></Suspense>} />
+            <Route path="/focus" element={<Suspense fallback={<RouteLoader />}><Focus /></Suspense>} />
+            <Route path="/analytics" element={<Suspense fallback={<RouteLoader />}><Analytics /></Suspense>} />
+            <Route path="/journal" element={<Suspense fallback={<RouteLoader />}><Journal /></Suspense>} />
+            <Route path="/goals" element={<Suspense fallback={<RouteLoader />}><Goals /></Suspense>} />
+            <Route path="/habits" element={<Suspense fallback={<RouteLoader />}><Habits /></Suspense>} />
+            <Route path="/ai" element={<Suspense fallback={<RouteLoader />}><AIAssistant /></Suspense>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

@@ -13,7 +13,7 @@ const TYPES = [
   { id: 'weekly', label: 'Weekly', icon: TrendingUp },
 ]
 
-export function Goals() {
+export default function Goals() {
   const { state, dispatch } = useApp()
   const [filter, setFilter] = useState('all')
   const [adding, setAdding] = useState(false)

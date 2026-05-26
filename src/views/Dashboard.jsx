@@ -12,7 +12,7 @@ import { Badge, statusTone, priorityTone } from '../components/ui/Badge'
 import { useApp } from '../state/AppState'
 import { relativeDate } from '../lib/utils'
 
-export function Dashboard() {
+export default function Dashboard() {
   const { state } = useApp()
   const { tasks, projects, focusSessions, journal, habits, goals, user } = state
 

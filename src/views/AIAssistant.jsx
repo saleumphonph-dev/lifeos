@@ -11,7 +11,7 @@ const SUGGESTIONS = [
   { icon: Calendar, prompt: 'Suggest a focus block schedule for tomorrow.' },
 ]
 
-export function AIAssistant() {
+export default function AIAssistant() {
   const { state } = useApp()
   const [messages, setMessages] = useState(() => [
     { role: 'assistant', text: `Morning, ${state.user.name}. I've reviewed your last 7 days — energy is trending up, café project is the weakest link.` },

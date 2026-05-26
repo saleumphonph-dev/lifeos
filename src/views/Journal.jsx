@@ -13,7 +13,7 @@ const MOODS = [
   { id: 'flow',  emoji: '🌊',  label: 'Flow',  color: '#a78bfa' },
 ]
 
-export function Journal() {
+export default function Journal() {
   const { state, dispatch } = useApp()
   const [activeDate, setActiveDate] = useState(todayISO())
 

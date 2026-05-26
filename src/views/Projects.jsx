@@ -20,7 +20,7 @@ const COLUMNS = [
 
 const PROJECT_COLORS = ['#4a9eff', '#2ee5a6', '#ffb547', '#a78bfa', '#ff7eb3', '#5eead4', '#ff5e5e']
 
-export function Projects() {
+export default function Projects() {
   const { state, dispatch } = useApp()
   const [view, setView] = useState('kanban') // 'kanban' | 'matrix'
   const [filterProject, setFilterProject] = useState('all')

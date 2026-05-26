@@ -9,7 +9,7 @@ import { useApp } from '../state/AppState'
 import { Activity, Brain, Target, Sparkles } from 'lucide-react'
 import { cn } from '../lib/utils'
 
-export function Analytics() {
+export default function Analytics() {
   const { state } = useApp()
   const [range, setRange] = useState('30d')
 

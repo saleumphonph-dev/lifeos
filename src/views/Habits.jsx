@@ -7,7 +7,7 @@ import { cn, todayISO } from '../lib/utils'
 
 const HABIT_COLORS = ['#4a9eff', '#2ee5a6', '#ffb547', '#a78bfa', '#ff7eb3', '#5eead4', '#ff5e5e']
 
-export function Habits() {
+export default function Habits() {
   const { state, dispatch } = useApp()
   const today = todayISO()
   const [adding, setAdding] = useState(false)

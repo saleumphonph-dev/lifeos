@@ -28,22 +28,59 @@ export default function Dashboard() {
     return 'Good evening'
   }, [])
 
-  const todaySessions = focusSessions.slice(0, 6)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const todaySessions = focusSessions.filter(s => (s.date || s.startedAt || '').slice(0, 10) === todayStr)
   const focusMinutes = todaySessions.reduce((sum, s) => sum + (s.duration || 0), 0)
-  const completedToday = tasks.filter(t => t.status === 'done').slice(0, 12).length
+  const completedToday = tasks.filter(t => t.status === 'done' && (t.completedAt || '').slice(0, 10) === todayStr).length
   const activeTasks = tasks.filter(t => t.status === 'in_progress')
+  const openTaskCount = tasks.filter(t => t.status !== 'done').length
   const upNext = tasks
     .filter(t => t.status !== 'done')
     .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'))
     .slice(0, 5)
 
+  // --- Real KPI computations (replacing previous hardcoded demo numbers) ---
+  // Output Score: % of all tasks completed (capped 0-100)
+  const totalTasks = tasks.length
+  const doneTasks = tasks.filter(t => t.status === 'done').length
+  const outputScore = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
+
+  // Deep Work hours over last 7 days
+  const weekAgoMs = Date.now() - 7 * 86400000
+  const weekFocusMinutes = focusSessions
+    .filter(s => {
+      const ts = new Date(s.date || s.startedAt || 0).getTime()
+      return ts >= weekAgoMs
+    })
+    .reduce((sum, s) => sum + (s.duration || 0), 0)
+  const deepWorkHours = Math.round(weekFocusMinutes / 60)
+
+  // Streak: longest current streak across all habits
+  const longestStreak = habits.reduce((max, h) => Math.max(max, h.streak || 0), 0)
+
+  // Velocity: tasks completed this week
+  const tasksThisWeek = tasks.filter(t => {
+    if (t.status !== 'done' || !t.completedAt) return false
+    return new Date(t.completedAt).getTime() >= weekAgoMs
+  }).length
+
+  // Real weekly trend computed from tasks completed + focus minutes per day
   const weeklyTrend = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => ({
-      day: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i],
-      output: 4 + Math.round(Math.sin(i * 0.9) * 2 + Math.random() * 3),
-      focus: 3 + Math.round(Math.cos(i * 0.6) * 1.5 + Math.random() * 2),
-    }))
-  }, [])
+    const days = []
+    const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    const today = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(today.getDate() - i)
+      const iso = d.toISOString().slice(0, 10)
+      const output = tasks.filter(t => t.status === 'done' && (t.completedAt || '').slice(0, 10) === iso).length
+      const focusMin = focusSessions
+        .filter(s => (s.date || s.startedAt || '').slice(0, 10) === iso)
+        .reduce((sum, s) => sum + (s.duration || 0), 0)
+      days.push({ day: dayLabels[d.getDay()], output, focus: Math.round(focusMin / 60) })
+    }
+    return days
+  }, [tasks, focusSessions])
 
   const habitCompletionToday = habits.filter(h => {
     const today = new Date().toISOString().slice(0, 10)
@@ -65,7 +102,11 @@ export default function Dashboard() {
             <h1 className="font-display text-3xl md:text-4xl mt-3 leading-[1.05]">
               {greeting}, <em className="text-accent-blue not-italic">{user.name}.</em>
               <br />
-              <span className="text-text-secondary">3 deep blocks open today.</span>
+              <span className="text-text-secondary">
+                {openTaskCount > 0
+                  ? `${openTaskCount} ${openTaskCount === 1 ? 'task' : 'tasks'} open today.`
+                  : 'A clean slate. Plan something great.'}
+              </span>
             </h1>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link to="/focus">
@@ -102,12 +143,12 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — all metrics computed from real state */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile label="Output Score" value="84" unit="/100" delta={6.4} deltaLabel="vs last wk" icon={Activity} accent="#4a9eff" />
-        <StatTile label="Deep Work" value={Math.round(focusMinutes/60)} unit="hrs" delta={12} deltaLabel="7d" icon={Clock} accent="#2ee5a6" />
-        <StatTile label="Streak" value="22" unit="days" delta={3.1} deltaLabel="rolling" icon={Flame} accent="#ffb547" />
-        <StatTile label="Velocity" value="2.4x" delta={-2.1} deltaLabel="vs avg" icon={Zap} accent="#a78bfa" />
+        <StatTile label="Output Score" value={outputScore} unit="/100" deltaLabel={`${doneTasks}/${totalTasks} tasks done`} icon={Activity} accent="#4a9eff" />
+        <StatTile label="Deep Work" value={deepWorkHours} unit="hrs" deltaLabel="last 7 days" icon={Clock} accent="#2ee5a6" />
+        <StatTile label="Streak" value={longestStreak} unit={longestStreak === 1 ? 'day' : 'days'} deltaLabel="best habit" icon={Flame} accent="#ffb547" />
+        <StatTile label="Velocity" value={tasksThisWeek} unit={tasksThisWeek === 1 ? 'task' : 'tasks'} deltaLabel="completed this wk" icon={Zap} accent="#a78bfa" />
       </div>
 
       {/* Mid row */}

@@ -24,16 +24,20 @@ export function StatTile({ label, value, unit, delta, deltaLabel, icon: Icon, ac
         <div className="font-mono tnum text-2xl font-semibold text-text-primary">{value}</div>
         {unit && <div className="text-xs text-text-tertiary">{unit}</div>}
       </div>
-      {delta != null && (
+      {(delta != null || deltaLabel) && (
         <div className="flex items-center gap-1 mt-2 relative">
-          {positive ? (
-            <ArrowUpRight size={12} className="text-accent-emerald" />
-          ) : (
-            <ArrowDownRight size={12} className="text-accent-red" />
+          {delta != null && (
+            <>
+              {positive ? (
+                <ArrowUpRight size={12} className="text-accent-emerald" />
+              ) : (
+                <ArrowDownRight size={12} className="text-accent-red" />
+              )}
+              <span className={cn('text-[11px] font-medium font-mono tnum', positive ? 'text-accent-emerald' : 'text-accent-red')}>
+                {positive ? '+' : ''}{delta}%
+              </span>
+            </>
           )}
-          <span className={cn('text-[11px] font-medium font-mono tnum', positive ? 'text-accent-emerald' : 'text-accent-red')}>
-            {positive ? '+' : ''}{delta}%
-          </span>
           {deltaLabel && <span className="text-[11px] text-text-tertiary ml-0.5">{deltaLabel}</span>}
         </div>
       )}

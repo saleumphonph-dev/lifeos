@@ -1,14 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, Mail, ArrowRight, CheckCircle2, KeyRound } from 'lucide-react'
 import { signInWithEmail, verifyEmailOtp } from '../lib/sync'
+import { useIsAuthenticated } from '../state/AuthState'
 
 const ALLOWED_EMAIL = import.meta.env.VITE_ALLOWED_EMAIL || ''
 
 export function Login() {
+  const navigate = useNavigate()
+  const { isAuth, loading } = useIsAuthenticated()
   const [email, setEmail] = useState(ALLOWED_EMAIL)
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | sent | verifying | error
   const [errMsg, setErrMsg] = useState('')
+
+  // If user becomes authenticated (e.g. magic link click), redirect to dashboard
+  useEffect(() => {
+    if (!loading && isAuth) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuth, loading, navigate])
+
+  // Show loader while auth state is being determined (magic link being processed)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bg-deep flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-accent-blue/30 border-t-accent-blue animate-spin" />
+      </div>
+    )
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()

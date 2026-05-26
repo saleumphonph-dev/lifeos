@@ -113,7 +113,8 @@
       "Bash(git commit *)",
       "Bash(gh secret *)",
       "Bash(gh api *)",
-      "WebFetch(domain:saleumphonph-dev.github.io)"
+      "WebFetch(domain:saleumphonph-dev.github.io)",
+      "mcp__12d9f662-44c8-4184-904f-70a1c90f364b__search_docs"
     ]
   }
 }

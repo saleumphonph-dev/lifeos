@@ -161,6 +161,20 @@ export function Login() {
                   <>Send magic link <ArrowRight size={14} /></>
                 )}
               </button>
+
+              {errMsg && (
+                <p className="text-[12px] text-accent-red text-center -mt-1">{errMsg}</p>
+              )}
+
+              {/* Already have a code from a previous email? skip the send step */}
+              <button
+                type="button"
+                onClick={() => { setStatus('sent'); setErrMsg('') }}
+                disabled={!email.trim()}
+                className="w-full text-[11px] text-text-tertiary hover:text-text-secondary mt-2 disabled:opacity-30"
+              >
+                I already have a 6-digit code →
+              </button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-border-subtle flex items-center gap-2 text-[11px] text-text-tertiary">

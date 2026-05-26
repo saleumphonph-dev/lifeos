@@ -39,7 +39,7 @@ export default function Habits() {
   }, [])
 
   const totalCompletion = Math.round(
-    (state.habits.reduce((sum, h) => sum + h.completedDates.length, 0) /
+    (state.habits.reduce((sum, h) => sum + (h.completedDates || []).length, 0) /
       Math.max(1, state.habits.length * 28)) * 100
   )
 
@@ -84,7 +84,7 @@ export default function Habits() {
             <tbody>
               {state.habits.map(h => {
                 const IconComp = Icons[h.icon] || Icons.Activity
-                const set = new Set(h.completedDates)
+                const set = new Set(h.completedDates || [])
                 return (
                   <tr key={h.id} className="group">
                     <td className="px-2 py-1.5">
@@ -138,7 +138,7 @@ export default function Habits() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {state.habits.map(h => {
           const IconComp = Icons[h.icon] || Icons.Activity
-          const completionPct = Math.round((h.completedDates.length / 28) * 100)
+          const completionPct = Math.round(((h.completedDates || []).length / 28) * 100)
           return (
             <Card key={h.id} className="relative group">
               <button
@@ -163,11 +163,11 @@ export default function Habits() {
                   onClick={() => dispatch({ type: 'habit.toggle', id: h.id })}
                   className={cn(
                     'h-9 w-9 rounded-sm flex items-center justify-center border transition-colors',
-                    h.completedDates.includes(today)
+                    (h.completedDates || []).includes(today)
                       ? 'border-transparent text-bg-base'
                       : 'border-border-subtle text-text-tertiary hover:bg-white/[0.06]'
                   )}
-                  style={h.completedDates.includes(today) ? { background: h.color } : undefined}
+                  style={(h.completedDates || []).includes(today) ? { background: h.color } : undefined}
                 >
                   <Check size={14} />
                 </button>

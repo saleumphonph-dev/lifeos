@@ -5,6 +5,7 @@ import { AppStateProvider } from './state/AppState'
 import { AuthProvider, useIsAuthenticated } from './state/AuthState'
 import { isSupabaseReady } from './lib/supabase'
 import { Login } from './views/Login'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Lazy load all route views for code-splitting
 const Dashboard = lazy(() => import('./views/Dashboard'))
@@ -52,14 +53,14 @@ export default function App() {
             }
           >
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Suspense fallback={<RouteLoader />}><Dashboard /></Suspense>} />
-            <Route path="/projects" element={<Suspense fallback={<RouteLoader />}><Projects /></Suspense>} />
-            <Route path="/focus" element={<Suspense fallback={<RouteLoader />}><Focus /></Suspense>} />
-            <Route path="/analytics" element={<Suspense fallback={<RouteLoader />}><Analytics /></Suspense>} />
-            <Route path="/journal" element={<Suspense fallback={<RouteLoader />}><Journal /></Suspense>} />
-            <Route path="/goals" element={<Suspense fallback={<RouteLoader />}><Goals /></Suspense>} />
-            <Route path="/habits" element={<Suspense fallback={<RouteLoader />}><Habits /></Suspense>} />
-            <Route path="/ai" element={<Suspense fallback={<RouteLoader />}><AIAssistant /></Suspense>} />
+            <Route path="/dashboard" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Dashboard /></Suspense></ErrorBoundary>} />
+            <Route path="/projects" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Projects /></Suspense></ErrorBoundary>} />
+            <Route path="/focus" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Focus /></Suspense></ErrorBoundary>} />
+            <Route path="/analytics" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Analytics /></Suspense></ErrorBoundary>} />
+            <Route path="/journal" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Journal /></Suspense></ErrorBoundary>} />
+            <Route path="/goals" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Goals /></Suspense></ErrorBoundary>} />
+            <Route path="/habits" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Habits /></Suspense></ErrorBoundary>} />
+            <Route path="/ai" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><AIAssistant /></Suspense></ErrorBoundary>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

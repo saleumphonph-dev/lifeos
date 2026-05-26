@@ -47,7 +47,7 @@ export default function Dashboard() {
 
   const habitCompletionToday = habits.filter(h => {
     const today = new Date().toISOString().slice(0, 10)
-    return h.completedDates.includes(today)
+    return (h.completedDates || []).includes(today)
   }).length
 
   return (
@@ -180,29 +180,35 @@ export default function Dashboard() {
             action={<Link to="/projects" className="text-[11px] text-text-tertiary hover:text-text-secondary flex items-center gap-1">Open <ArrowRight size={11} /></Link>}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {projects.slice(0, 4).map(p => (
-              <div key={p.id} className="relative p-4 rounded-md bg-white/[0.025] border border-border-subtle hover:border-border transition-all duration-200 hover:bg-white/[0.04]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                    <span className="text-[13px] font-medium text-text-primary truncate">{p.name}</span>
-                  </div>
-                  <Badge tone={statusTone[p.status]}>{p.status.replace('_',' ')}</Badge>
-                </div>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <div className="font-mono tnum text-2xl text-text-primary">{p.progress}%</div>
-                    <div className="text-[10px] text-text-tertiary mt-0.5">
-                      {p.taskCount.active} active · {p.taskCount.done} done
+            {projects.slice(0, 4).map(p => {
+              // Compute task counts from live state (user-created projects may not have a static taskCount field)
+              const projectTasks = tasks.filter(t => t.projectId === p.id)
+              const activeCount = projectTasks.filter(t => t.status !== 'done').length
+              const doneCount = projectTasks.filter(t => t.status === 'done').length
+              return (
+                <div key={p.id} className="relative p-4 rounded-md bg-white/[0.025] border border-border-subtle hover:border-border transition-all duration-200 hover:bg-white/[0.04]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+                      <span className="text-[13px] font-medium text-text-primary truncate">{p.name}</span>
                     </div>
+                    <Badge tone={statusTone[p.status]}>{p.status.replace('_',' ')}</Badge>
                   </div>
-                  <ProgressRing size={44} strokeWidth={4} progress={p.progress} gradient={[p.color, '#2ee5a6']} />
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="font-mono tnum text-2xl text-text-primary">{p.progress}%</div>
+                      <div className="text-[10px] text-text-tertiary mt-0.5">
+                        {activeCount} active · {doneCount} done
+                      </div>
+                    </div>
+                    <ProgressRing size={44} strokeWidth={4} progress={p.progress} gradient={[p.color, '#2ee5a6']} />
+                  </div>
+                  <div className="h-1 mt-3 rounded-full overflow-hidden bg-white/[0.05]">
+                    <div className="h-full rounded-full" style={{ width: `${p.progress}%`, background: `linear-gradient(90deg, ${p.color}, ${p.color}99)` }} />
+                  </div>
                 </div>
-                <div className="h-1 mt-3 rounded-full overflow-hidden bg-white/[0.05]">
-                  <div className="h-full rounded-full" style={{ width: `${p.progress}%`, background: `linear-gradient(90deg, ${p.color}, ${p.color}99)` }} />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Card>
 
@@ -235,9 +241,9 @@ export default function Dashboard() {
                 </div>
                 <p
                   className="text-[12.5px] text-text-secondary leading-relaxed line-clamp-3"
-                  dangerouslySetInnerHTML={{ __html: journal[0].body }}
+                  dangerouslySetInnerHTML={{ __html: journal[0].body || '' }}
                 />
-                {journal[0].decisions.length > 0 && (
+                {(journal[0].decisions || []).length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border-subtle">
                     <div className="text-[10px] uppercase tracking-[0.14em] text-text-quaternary mb-1.5">Open decision</div>
                     <div className="text-[12px] text-text-primary">{journal[0].decisions[0].text}</div>

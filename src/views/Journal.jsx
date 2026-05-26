@@ -37,16 +37,45 @@ export default function Journal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDate])
 
+  // Track the latest pending patch so we can flush it on unmount/blur
+  const pendingPatchRef = useRef(null)
+  const activeDateRef = useRef(activeDate)
+  useEffect(() => { activeDateRef.current = activeDate }, [activeDate])
+
+  function flushSave() {
+    if (!pendingPatchRef.current) return
+    clearTimeout(saveTimer.current)
+    const next = { ...draftRef.current, ...pendingPatchRef.current, date: activeDateRef.current }
+    pendingPatchRef.current = null
+    setDraft(next)
+    dispatch({ type: 'journal.upsert', entry: next })
+    setSaveLabel('Saved')
+  }
+
   function commit(patch) {
     setSaveLabel('Saving…')
+    // Merge with any pending patch so we don't lose earlier edits in a burst
+    pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch }
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      const next = { ...draftRef.current, ...patch, date: activeDate }
-      setDraft(next)
-      dispatch({ type: 'journal.upsert', entry: next })
-      setSaveLabel('Saved')
-    }, 350)
+    saveTimer.current = setTimeout(flushSave, 350)
   }
+
+  // Flush any pending save when the date changes, the tab is hidden,
+  // or the component unmounts — so the user never loses what they typed
+  // even if they navigate away within the 350ms debounce window.
+  useEffect(() => {
+    function onHide() { if (document.hidden) flushSave() }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', flushSave)
+    window.addEventListener('beforeunload', flushSave)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', flushSave)
+      window.removeEventListener('beforeunload', flushSave)
+      flushSave() // flush on unmount (e.g., route change)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function onEditorInput() {
     commit({ body: editorRef.current.innerHTML })

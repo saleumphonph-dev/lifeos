@@ -114,7 +114,9 @@
       "Bash(gh secret *)",
       "Bash(gh api *)",
       "WebFetch(domain:saleumphonph-dev.github.io)",
-      "mcp__12d9f662-44c8-4184-904f-70a1c90f364b__search_docs"
+      "mcp__12d9f662-44c8-4184-904f-70a1c90f364b__search_docs",
+      "mcp__12d9f662-44c8-4184-904f-70a1c90f364b__list_tables",
+      "mcp__12d9f662-44c8-4184-904f-70a1c90f364b__get_advisors"
     ]
   }
 }

@@ -59,14 +59,33 @@ export async function pullState() {
   }
 }
 
-/** Sign in with magic link (passwordless email) */
+/** Sign in with magic link + 6-digit OTP code (passwordless email).
+ *  Supabase sends BOTH a clickable link AND a 6-digit code in the same email.
+ *  User can either click the link OR type the code into our app. */
 export async function signInWithEmail(email) {
   if (!supabase) throw new Error('Supabase not configured')
+  // Build the redirect URL based on current location so magic link works
+  // regardless of where the app is deployed (Vercel, Netlify, GH Pages, localhost).
+  const redirectTo = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}`
+    : undefined
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
   })
   if (error) throw error
+}
+
+/** Verify 6-digit OTP code from the magic-link email */
+export async function verifyEmailOtp(email, token) {
+  if (!supabase) throw new Error('Supabase not configured')
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  })
+  if (error) throw error
+  return data.session
 }
 
 /** Sign out */

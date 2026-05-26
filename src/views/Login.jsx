@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Sparkles, Mail, ArrowRight, CheckCircle2 } from 'lucide-react'
-import { signInWithEmail } from '../lib/sync'
+import { Sparkles, Mail, ArrowRight, CheckCircle2, KeyRound } from 'lucide-react'
+import { signInWithEmail, verifyEmailOtp } from '../lib/sync'
 
 const ALLOWED_EMAIL = import.meta.env.VITE_ALLOWED_EMAIL || ''
 
 export function Login() {
   const [email, setEmail] = useState(ALLOWED_EMAIL)
-  const [status, setStatus] = useState('idle') // idle | loading | sent | error
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState('idle') // idle | loading | sent | verifying | error
   const [errMsg, setErrMsg] = useState('')
 
   async function handleSubmit(e) {
@@ -20,6 +21,24 @@ export function Login() {
     } catch (err) {
       setErrMsg(err.message)
       setStatus('error')
+    }
+  }
+
+  async function handleVerifyCode(e) {
+    e.preventDefault()
+    const trimmed = code.replace(/\s/g, '')
+    if (trimmed.length !== 6) {
+      setErrMsg('Enter the 6-digit code from your email')
+      return
+    }
+    setStatus('verifying')
+    setErrMsg('')
+    try {
+      await verifyEmailOtp(email.trim(), trimmed)
+      // onAuthChange listener will pick up the new session and redirect
+    } catch (err) {
+      setErrMsg(err.message || 'Invalid or expired code')
+      setStatus('sent')
     }
   }
 
@@ -43,15 +62,64 @@ export function Login() {
           </div>
         </div>
 
-        {status === 'sent' ? (
-          <div className="glass border border-border-subtle rounded-md p-8 text-center">
+        {status === 'sent' || status === 'verifying' ? (
+          <div className="glass border border-border-subtle rounded-md p-8">
             <CheckCircle2 className="mx-auto mb-4 text-accent-emerald" size={32} />
-            <h2 className="font-display text-xl text-text-primary mb-2">Check your inbox</h2>
-            <p className="text-[13px] text-text-secondary">
-              Magic link sent to <strong className="text-text-primary">{email}</strong>.
-              Click the link to sign in — no password needed.
+            <h2 className="font-display text-xl text-text-primary mb-2 text-center">Check your inbox</h2>
+            <p className="text-[13px] text-text-secondary text-center mb-6">
+              We sent a sign-in email to <strong className="text-text-primary">{email}</strong>.
             </p>
-            <p className="text-[11px] text-text-tertiary mt-4">Check your spam folder if you don't see it.</p>
+
+            <div className="border-t border-border-subtle pt-6">
+              <p className="text-[12px] text-text-tertiary text-center mb-4">
+                Enter the <strong className="text-text-primary">6-digit code</strong> from the email
+                <span className="block text-[11px] text-text-quaternary mt-1">(or just click the link in the email)</span>
+              </p>
+
+              <form onSubmit={handleVerifyCode} className="space-y-4">
+                <div className="relative">
+                  <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    autoFocus
+                    className="w-full h-11 pl-9 pr-4 rounded-sm bg-white/[0.04] border border-border-subtle text-[16px] text-text-primary outline-none focus:border-accent-blue/50 transition-colors font-mono tracking-[0.3em] text-center"
+                  />
+                </div>
+
+                {errMsg && (
+                  <p className="text-[12px] text-accent-red text-center">{errMsg}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={status === 'verifying' || code.length !== 6}
+                  className="w-full h-11 rounded-sm bg-gradient-to-r from-accent-blue to-accent-emerald text-bg-base font-semibold text-[14px] flex items-center justify-center gap-2 shadow-[0_0_30px_-8px_rgba(74,158,255,0.5)] hover:shadow-[0_0_40px_-8px_rgba(74,158,255,0.7)] transition-shadow disabled:opacity-50"
+                >
+                  {status === 'verifying' ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  ) : (
+                    <>Verify & sign in <ArrowRight size={14} /></>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setStatus('idle'); setCode(''); setErrMsg('') }}
+                  className="w-full text-[11px] text-text-tertiary hover:text-text-secondary"
+                >
+                  ← Use a different email
+                </button>
+              </form>
+
+              <p className="text-[11px] text-text-quaternary mt-4 text-center">Check spam folder if you don't see it.</p>
+            </div>
           </div>
         ) : (
           <div className="glass border border-border-subtle rounded-md p-8">

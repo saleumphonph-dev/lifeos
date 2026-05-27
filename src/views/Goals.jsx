@@ -126,7 +126,7 @@ export default function Goals() {
                     <Badge tone="default">{g.type}</Badge>
                     <Badge tone={statusTone[g.status]}>{g.status.replace('_',' ')}</Badge>
                   </div>
-                  <h3 className="text-[15px] font-semibold text-text-primary leading-tight">{g.name}</h3>
+                  <h3 className="text-[16px] font-semibold text-text-primary leading-[1.4] -tracking-[0.2px]">{g.name}</h3>
                   <div className="text-[11px] text-text-tertiary mt-1">
                     Target {relativeDate(g.targetDate)}
                   </div>
@@ -171,7 +171,7 @@ export default function Goals() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Launch LANI v2 capsule"
-                  className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] text-text-primary outline-none focus:border-accent-blue/40"
+                  className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none focus:border-accent-blue/40 -tracking-[0.2px]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -180,7 +180,7 @@ export default function Goals() {
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] text-text-primary outline-none"
+                    className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none -tracking-[0.2px]"
                   >
                     {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
@@ -191,7 +191,7 @@ export default function Goals() {
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] text-text-primary outline-none"
+                    className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none -tracking-[0.2px]"
                   />
                 </div>
               </div>

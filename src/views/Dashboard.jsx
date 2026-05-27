@@ -167,8 +167,8 @@ export default function Dashboard() {
                 <li key={t.id} className="group flex items-center gap-3 h-12 px-3 -mx-3 rounded-sm hover:bg-white/[0.04] transition-colors">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: project?.color }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] text-text-primary truncate">{t.title}</div>
-                    <div className="text-[10px] text-text-tertiary mt-0.5 flex items-center gap-2">
+                    <div className="text-[14px] text-text-primary truncate leading-[1.4] -tracking-[0.2px]">{t.title}</div>
+                    <div className="text-[11px] text-text-tertiary mt-0.5 flex items-center gap-2 leading-[1.3]">
                       <span>{project?.name}</span>
                       {t.dueDate && <><span>·</span><span>{relativeDate(t.dueDate)}</span></>}
                     </div>
@@ -231,7 +231,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                      <span className="text-[13px] font-medium text-text-primary truncate">{p.name}</span>
+                      <span className="text-[14px] font-medium text-text-primary truncate leading-[1.4] -tracking-[0.2px]">{p.name}</span>
                     </div>
                     <Badge tone={statusTone[p.status]}>{p.status.replace('_',' ')}</Badge>
                   </div>
@@ -260,9 +260,9 @@ export default function Dashboard() {
             <ul className="space-y-3">
               {goals.slice(0, 3).map(g => (
                 <li key={g.id}>
-                  <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-text-secondary truncate">{g.name}</span>
-                    <span className="font-mono tnum text-text-primary text-[11px]">{g.progress}%</span>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-text-secondary truncate leading-[1.4] -tracking-[0.15px]">{g.name}</span>
+                    <span className="font-mono tnum text-text-primary text-[12px]">{g.progress}%</span>
                   </div>
                   <div className="h-1 mt-1.5 rounded-full overflow-hidden bg-white/[0.05]">
                     <div className="h-full rounded-full" style={{ width: `${g.progress}%`, background: g.status === 'behind' ? '#ff5e5e' : 'linear-gradient(90deg,#4a9eff,#2ee5a6)' }} />
@@ -281,13 +281,13 @@ export default function Dashboard() {
                   <span className="text-[11px] text-text-tertiary capitalize">{journal[0].mood} · energy {journal[0].energy}/10</span>
                 </div>
                 <p
-                  className="text-[12.5px] text-text-secondary leading-relaxed line-clamp-3"
+                  className="text-[13px] text-text-secondary leading-[1.6] line-clamp-3 -tracking-[0.15px]"
                   dangerouslySetInnerHTML={{ __html: journal[0].body || '' }}
                 />
                 {(journal[0].decisions || []).length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border-subtle">
                     <div className="text-[10px] uppercase tracking-[0.14em] text-text-quaternary mb-1.5">Open decision</div>
-                    <div className="text-[12px] text-text-primary">{journal[0].decisions[0].text}</div>
+                    <div className="text-[13px] text-text-primary leading-[1.5] -tracking-[0.15px]">{journal[0].decisions[0].text}</div>
                   </div>
                 )}
               </div>

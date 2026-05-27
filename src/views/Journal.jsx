@@ -231,7 +231,7 @@ export default function Journal() {
             contentEditable
             onInput={onEditorInput}
             data-placeholder="What's on your mind? What happened today?…"
-            className="min-h-[200px] outline-none text-[14px] text-text-primary leading-relaxed font-serif [&_p]:mb-3"
+            className="min-h-[240px] outline-none px-4 py-3 text-[17px] text-text-primary leading-[1.85] font-serif -tracking-[0.3px] [&_p]:mb-3 [&_p]:last:mb-0"
             suppressContentEditableWarning
           />
         </Card>
@@ -284,7 +284,7 @@ export default function Journal() {
                   )}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-text-primary">{d.text}</div>
+                  <div className="text-[14px] text-text-primary leading-[1.5] -tracking-[0.2px]">{d.text}</div>
                   {d.reviewDate && <div className="text-[10px] text-text-tertiary mt-0.5">Review by {d.reviewDate}</div>}
                 </div>
                 <button
@@ -335,12 +335,12 @@ function ListPanel({ title, accent, items, placeholder, onAdd, onRemove }) {
       </div>
       <ul className="space-y-1.5 mb-3">
         {items.map((it, i) => (
-          <li key={i} className="group flex items-center gap-2 text-[12.5px] text-text-secondary">
-            <span className="w-1 h-1 rounded-full bg-text-quaternary" />
+          <li key={i} className="group flex items-center gap-2 text-[13px] text-text-secondary leading-[1.5] -tracking-[0.15px]">
+            <span className="w-1 h-1 rounded-full bg-text-quaternary shrink-0 mt-0.5" />
             <span className="flex-1">{it}</span>
             <button
               onClick={() => onRemove(i)}
-              className="opacity-0 group-hover:opacity-100 text-text-quaternary hover:text-accent-red text-[14px] leading-none"
+              className="opacity-0 group-hover:opacity-100 text-text-quaternary hover:text-accent-red text-[14px] leading-none shrink-0"
             >×</button>
           </li>
         ))}
@@ -353,7 +353,7 @@ function ListPanel({ title, accent, items, placeholder, onAdd, onRemove }) {
           value={v}
           onChange={(e) => setV(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 h-8 px-2.5 rounded-sm bg-white/[0.04] border border-border-subtle text-[12px] outline-none focus:border-border"
+          className="flex-1 h-9 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] outline-none focus:border-border -tracking-[0.15px]"
         />
         <button type="submit" className="w-8 h-8 rounded-sm border border-border-subtle bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-secondary">
           <Plus size={12} />
@@ -381,14 +381,14 @@ function DecisionForm({ onAdd }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="What's the decision? (e.g. Hire a junior dev for Liepngarm)"
-        className="flex-1 h-9 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] outline-none focus:border-border"
+        className="flex-1 h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] outline-none focus:border-border -tracking-[0.2px]"
       />
       <input
         type="date"
         value={reviewDate}
         onChange={(e) => setReviewDate(e.target.value)}
         title="Optional review-by date"
-        className="h-9 px-2.5 rounded-sm bg-white/[0.04] border border-border-subtle text-[12px] text-text-secondary outline-none focus:border-border sm:w-[150px]"
+        className="h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] text-text-secondary outline-none focus:border-border -tracking-[0.15px] sm:w-[160px]"
       />
       <button
         type="submit"

@@ -317,7 +317,7 @@ function TaskCard({ task, project, dragging, onRemove }) {
         </button>
       )}
       <div className="flex items-start justify-between gap-2 mb-2 pr-5">
-        <p className="text-[13px] text-text-primary leading-snug flex-1">{task.title}</p>
+        <p className="text-[14px] text-text-primary leading-[1.5] flex-1 -tracking-[0.2px]">{task.title}</p>
         <Badge tone={priorityTone[task.priority]}>{task.priority}</Badge>
       </div>
       <div className="flex items-center gap-1.5 mb-2">

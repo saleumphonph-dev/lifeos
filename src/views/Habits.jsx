@@ -96,7 +96,7 @@ export default function Habits() {
                           <IconComp size={13} />
                         </div>
                         <div>
-                          <div className="text-[13px] text-text-primary leading-none">{h.name}</div>
+                          <div className="text-[14px] text-text-primary leading-[1.4] -tracking-[0.2px]">{h.name}</div>
                           <div className="text-[10px] text-text-tertiary mt-0.5">{h.frequency}</div>
                         </div>
                       </div>
@@ -156,8 +156,8 @@ export default function Habits() {
                   <IconComp size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold text-text-primary">{h.name}</div>
-                  <div className="text-[11px] text-text-tertiary capitalize">{h.frequency} · {completionPct}% adherence</div>
+                  <div className="text-[15px] font-semibold text-text-primary leading-[1.4] -tracking-[0.2px]">{h.name}</div>
+                  <div className="text-[12px] text-text-tertiary capitalize leading-[1.4]">{h.frequency} · {completionPct}% adherence</div>
                 </div>
                 <button
                   onClick={() => dispatch({ type: 'habit.toggle', id: h.id })}
@@ -196,7 +196,7 @@ export default function Habits() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Morning workout"
-                  className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] text-text-primary outline-none focus:border-accent-blue/40"
+                  className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none focus:border-accent-blue/40 -tracking-[0.2px]"
                 />
               </div>
               <div>

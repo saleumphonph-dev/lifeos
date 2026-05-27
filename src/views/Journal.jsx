@@ -231,7 +231,7 @@ export default function Journal() {
             contentEditable
             onInput={onEditorInput}
             data-placeholder="What's on your mind? What happened today?…"
-            className="min-h-[240px] outline-none px-4 py-3 text-[17px] text-text-primary leading-[1.85] font-serif -tracking-[0.3px] [&_p]:mb-3 [&_p]:last:mb-0"
+            className="min-h-[240px] outline-none px-4 py-3 text-[16px] text-text-primary leading-[1.8] font-mono -tracking-[0.2px] [&_p]:mb-3 [&_p]:last:mb-0"
             suppressContentEditableWarning
           />
         </Card>

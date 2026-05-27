@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Plus, Command, Settings, Trash2, RotateCcw, LogOut } from 'lucide-react'
+import { Bell, Plus, Command, Settings, Trash2, RotateCcw, LogOut, RefreshCw } from 'lucide-react'
 import { NAV } from './Sidebar'
 import { useApp } from '../../state/AppState'
 import { isSupabaseReady } from '../../lib/supabase'
@@ -43,6 +43,32 @@ export function Topbar({ onCommand, onNewTask }) {
   async function handleSignOut() {
     await signOut()
     navigate('/login')
+  }
+
+  async function hardRefresh() {
+    if (confirm('Hard refresh the app?\n\nThis will clear all cached files and reload. Your data is safe in localStorage.')) {
+      try {
+        // Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          for (const registration of registrations) {
+            await registration.unregister()
+          }
+        }
+        // Clear all caches
+        if ('caches' in window) {
+          const cacheNames = await caches.keys()
+          for (const cacheName of cacheNames) {
+            await caches.delete(cacheName)
+          }
+        }
+        // Force reload with cache busting
+        window.location.href = window.location.href + '?t=' + Date.now()
+      } catch (err) {
+        console.error('Hard refresh error:', err)
+        alert('Error during hard refresh. Please try again.')
+      }
+    }
   }
 
   return (
@@ -107,6 +133,16 @@ export function Topbar({ onCommand, onNewTask }) {
                 <div>
                   <div className="text-[12.5px] text-text-primary font-medium">Reset to demo data</div>
                   <div className="text-[10.5px] text-text-tertiary mt-0.5">Restore the original sample projects</div>
+                </div>
+              </button>
+              <button
+                onClick={hardRefresh}
+                className="w-full px-3 py-2.5 flex items-start gap-2.5 hover:bg-white/[0.04] text-left transition-colors"
+              >
+                <RefreshCw size={14} className="text-text-tertiary mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-[12.5px] text-text-primary font-medium">Hard refresh</div>
+                  <div className="text-[10.5px] text-text-tertiary mt-0.5">Clear cache and reload the app</div>
                 </div>
               </button>
               {isSupabaseReady && (

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react'
 import { storage } from '../lib/storage'
 import { uid } from '../lib/utils'
-import { pushState } from '../lib/sync'
+import { pushState, pullState, onAuthChange } from '../lib/sync'
+import { isSupabaseReady } from '../lib/supabase'
 import {
   PROJECTS as SEED_PROJECTS,
   TASKS as SEED_TASKS,
@@ -16,7 +17,9 @@ const STORAGE_KEY = 'state.v1'
 
 const initialState = () => {
   const persisted = storage.get(STORAGE_KEY)
-  if (persisted) return persisted
+  if (persisted) return { ...persisted, _isSeed: false }
+  // Fresh device — start with seed data, but flag so we don't push it
+  // to Supabase before we've had a chance to pull the real cloud state.
   return {
     user: USER,
     projects: SEED_PROJECTS,
@@ -26,10 +29,28 @@ const initialState = () => {
     journal: SEED_JOURNAL,
     focusSessions: SEED_FOCUS,
     settings: { soundsEnabled: true, focusDuration: 25, breakDuration: 5 },
+    _isSeed: true,
+    lastModifiedAt: null,
   }
 }
 
 function reducer(state, action) {
+  // Bypass the modification tracking when replacing the whole state from
+  // a Supabase pull — that's not a "user change", just a hydration.
+  if (action.type === 'state.hydrate') {
+    return { ...action.state, _isSeed: false }
+  }
+
+  const next = reducerCore(state, action)
+  if (next === state) return state // no-op, don't touch timestamps
+  return {
+    ...next,
+    _isSeed: false,
+    lastModifiedAt: new Date().toISOString(),
+  }
+}
+
+function reducerCore(state, action) {
   switch (action.type) {
     case 'task.add':
       return { ...state, tasks: [{ id: uid(), tags: [], status: 'backlog', priority: 'P2', iceScore: 5, estimatedHours: 1, ...action.task }, ...state.tasks] }
@@ -169,15 +190,62 @@ const Ctx = createContext(null)
 export function AppStateProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState)
   const syncTimer = useRef(null)
+  const stateRef = useRef(state)
+  useEffect(() => { stateRef.current = state }, [state])
 
+  // Persist to LocalStorage immediately + debounced push to Supabase
   useEffect(() => {
-    // Always persist to LocalStorage immediately
     storage.set(STORAGE_KEY, state)
 
-    // Debounce the Supabase push — no rush, 3s is fine
+    // Don't push seed data to Supabase — that would clobber the real
+    // cloud snapshot before we've had a chance to pull it.
+    if (state._isSeed) return
+
     clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => pushState(state), 3000)
   }, [state])
+
+  // Pull remote state on mount + whenever auth changes (e.g. sign-in).
+  // This is what makes the iPhone-after-Mac scenario work — without it,
+  // a fresh device just keeps showing seed data forever.
+  useEffect(() => {
+    if (!isSupabaseReady) return
+
+    let cancelled = false
+
+    async function attemptPull() {
+      const remote = await pullState()
+      if (cancelled || !remote) return
+
+      const local = stateRef.current
+      const localTime = local.lastModifiedAt ? new Date(local.lastModifiedAt).getTime() : 0
+      const remoteTime = remote.syncedAt ? new Date(remote.syncedAt).getTime() : 0
+
+      // Remote wins when: local is still seed data, OR remote is newer than
+      // anything we've modified locally. This keeps unsynced offline edits
+      // safe while still bringing fresh devices up to speed.
+      const shouldUseRemote = local._isSeed || remoteTime > localTime
+      if (shouldUseRemote) {
+        dispatch({ type: 'state.hydrate', state: remote.payload })
+      }
+    }
+
+    // Try right away (in case session is already restored)
+    attemptPull()
+
+    // Also try whenever auth state changes — handles the case where the
+    // user signs in after the app has already mounted.
+    const unsub = onAuthChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        attemptPull()
+      }
+    })
+
+    return () => {
+      cancelled = true
+      unsub && unsub()
+    }
+  }, [])
 
   const value = useMemo(() => ({ state, dispatch }), [state])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

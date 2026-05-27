@@ -36,7 +36,8 @@ export async function pushState(state) {
   }
 }
 
-/** Pull state from Supabase (called once on app load) */
+/** Pull state from Supabase (called on app load + after sign-in).
+ *  Returns { payload, syncedAt } when a snapshot exists, null otherwise. */
 export async function pullState() {
   if (!isSupabaseReady || !supabase) return null
   if (!navigator.onLine) return null
@@ -47,12 +48,12 @@ export async function pullState() {
 
     const { data, error } = await supabase
       .from(TABLE)
-      .select('payload')
+      .select('payload, synced_at')
       .eq('user_id', user.id)
       .single()
 
     if (error || !data) return null
-    return data.payload
+    return { payload: data.payload, syncedAt: data.synced_at }
   } catch (err) {
     console.debug('[sync] pull skipped:', err.message)
     return null

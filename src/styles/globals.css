@@ -170,6 +170,14 @@ input[type='number'] { -moz-appearance: textfield; }
 }
 .mention[data-type='task']:hover { background: rgba(167, 139, 250, 0.24); }
 
+/* Misspelled words (CSS Custom Highlight API) — red wavy underline,
+   with a faint tint fallback for engines that ignore text-decoration here. */
+::highlight(misspelled) {
+  text-decoration: underline wavy #ff5e5e;
+  text-decoration-skip-ink: none;
+  background-color: rgba(255, 94, 94, 0.10);
+}
+
 /* Kanban dragging */
 .dragging {
   opacity: 0.4;

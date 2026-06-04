@@ -45,8 +45,47 @@ export default function Journal() {
   const saveTimer = useRef(null)
   const draftRef = useRef(draft)
 
+  // ── Spell-check state ────────────────────────────────────────────────
+  // The engine + dictionary (~540KB) is loaded lazily on first mount so it
+  // never touches the initial bundle. `nativeSpell` stays true until our
+  // custom checker is active, so unsupported browsers keep native squiggles.
+  const spellRef = useRef(null)
+  const spellTimer = useRef(null)
+  const [nativeSpell, setNativeSpell] = useState(true)
+  const [spellMenu, setSpellMenu] = useState(null) // right-click correction menu
+
   // Keep ref in sync so commit() always sees latest draft
   useEffect(() => { draftRef.current = draft }, [draft])
+
+  // Load the spell-checker once, then run an initial pass.
+  useEffect(() => {
+    let cancelled = false
+    import('../lib/spellcheck').then(mod => {
+      if (cancelled) return
+      spellRef.current = mod
+      if (mod.isSupported()) {
+        setNativeSpell(false) // hand off from native squiggles to ours
+        mod.getSpeller() // warm up
+        runSpellcheck()
+      }
+    }).catch(() => { /* keep native spellcheck on failure */ })
+    return () => {
+      cancelled = true
+      clearTimeout(spellTimer.current)
+      spellRef.current?.clearHighlights?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Re-scan the editor for misspellings (debounced).
+  function runSpellcheck() {
+    const mod = spellRef.current
+    if (!mod || !mod.isSupported() || !editorRef.current) return
+    clearTimeout(spellTimer.current)
+    spellTimer.current = setTimeout(() => {
+      mod.highlightEditor(editorRef.current)
+    }, 300)
+  }
 
   // Only reload editor when the date changes (NOT on every state.journal change —
   // that's what was causing the cursor to jump to the start while typing).
@@ -55,6 +94,8 @@ export default function Journal() {
     const loaded = found ?? makeEmpty(activeDate)
     setDraft(loaded)
     if (editorRef.current) editorRef.current.innerHTML = loaded.body || ''
+    setSpellMenu(null)
+    runSpellcheck() // re-check the freshly loaded entry
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDate])
 
@@ -101,7 +142,75 @@ export default function Journal() {
   function onEditorInput() {
     commit({ body: editorRef.current.innerHTML })
     detectMention()
+    runSpellcheck()
   }
+
+  // ── Right-click spelling menu ────────────────────────────────────────
+  function onEditorContextMenu(e) {
+    const mod = spellRef.current
+    if (!mod || !mod.isSupported()) return // fall back to the native menu
+    const hit = mod.wordAtPoint(editorRef.current, e.clientX, e.clientY)
+    if (!hit) { setSpellMenu(null); return }
+    e.preventDefault()
+    setSpellMenu({
+      x: e.clientX, y: e.clientY,
+      word: hit.word, node: hit.node, start: hit.start, end: hit.end,
+      suggestions: hit.suggestions,
+    })
+  }
+
+  // Replace the misspelled word's range with the chosen text.
+  function applySpellReplace(replacement) {
+    const m = spellMenu
+    if (!m) return
+    const range = document.createRange()
+    try {
+      range.setStart(m.node, m.start)
+      range.setEnd(m.node, m.end)
+    } catch { setSpellMenu(null); return }
+    range.deleteContents()
+    const tn = document.createTextNode(replacement)
+    range.insertNode(tn)
+    const after = document.createRange()
+    after.setStart(tn, tn.length)
+    after.collapse(true)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(after)
+    setSpellMenu(null)
+    editorRef.current?.focus()
+    onEditorInput()
+  }
+
+  function addWordToDictionary() {
+    const mod = spellRef.current
+    if (mod && spellMenu) mod.addToDictionary(spellMenu.word)
+    setSpellMenu(null)
+    runSpellcheck()
+  }
+
+  function ignoreSpellWord() {
+    const mod = spellRef.current
+    if (mod && spellMenu) mod.ignoreWord(spellMenu.word)
+    setSpellMenu(null)
+    runSpellcheck()
+  }
+
+  // Close the spelling menu on any outside interaction.
+  useEffect(() => {
+    if (!spellMenu) return
+    function close(e) {
+      if (!e.target.closest?.('[data-spell-menu]')) setSpellMenu(null)
+    }
+    function onKey(e) { if (e.key === 'Escape') setSpellMenu(null) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', () => setSpellMenu(null), true)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [spellMenu])
 
   // Inspect the text just before the caret. If it looks like an in-progress
   // "@query" token, open the picker with matching items; otherwise close it.
@@ -356,12 +465,13 @@ export default function Journal() {
               onKeyDown={onEditorKeyDown}
               onKeyUp={(e) => { if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') detectMention() }}
               onClick={onEditorClick}
+              onContextMenu={onEditorContextMenu}
               onBlur={() => setTimeout(() => setMention(null), 150)}
               data-placeholder="What's on your mind? Type @ to link a project, goal, or task…"
               className="min-h-[240px] outline-none px-4 py-3 text-[16px] text-text-primary leading-[1.8] font-mono -tracking-[0.2px] [&_p]:mb-3 [&_p]:last:mb-0"
               suppressContentEditableWarning
               lang="en"
-              spellCheck="true"
+              spellCheck={nativeSpell}
               autoCorrect="on"
               autoCapitalize="sentences"
             />
@@ -392,6 +502,40 @@ export default function Journal() {
                   )
                 })}
               </ul>
+            )}
+            {spellMenu && (
+              <div
+                data-spell-menu
+                className="fixed z-50 w-56 rounded-md border border-border-subtle bg-bg-elevated shadow-2xl py-1"
+                style={{ top: spellMenu.y, left: spellMenu.x }}
+              >
+                {spellMenu.suggestions.length > 0 ? (
+                  spellMenu.suggestions.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applySpellReplace(s)}
+                      className="w-full text-left px-3 py-1.5 text-[13px] text-text-primary hover:bg-white/[0.07]"
+                    >{s}</button>
+                  ))
+                ) : (
+                  <div className="px-3 py-1.5 text-[12px] text-text-quaternary italic">No suggestions</div>
+                )}
+                <div className="my-1 border-t border-border-subtle" />
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={addWordToDictionary}
+                  className="w-full text-left px-3 py-1.5 text-[12px] text-text-secondary hover:bg-white/[0.07]"
+                >Add to dictionary</button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={ignoreSpellWord}
+                  className="w-full text-left px-3 py-1.5 text-[12px] text-text-secondary hover:bg-white/[0.07]"
+                >Ignore</button>
+              </div>
             )}
           </div>
         </Card>

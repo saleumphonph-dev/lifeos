@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Plus, Save, Sparkles, FolderKanban, Target, CheckSquare } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
@@ -536,11 +537,11 @@ export default function Journal() {
                 })}
               </ul>
             )}
-            {spellMenu && (
+            {spellMenu && createPortal(
               <div
                 data-spell-menu
                 ref={spellMenuRef}
-                className="fixed z-50 w-56 rounded-md border border-border-subtle bg-bg-elevated shadow-2xl py-1"
+                className="fixed z-[60] w-56 rounded-md border border-border-subtle bg-bg-elevated shadow-2xl py-1"
                 style={{ top: spellMenu.anchorBottom + 4, left: spellMenu.anchorLeft, visibility: 'hidden' }}
               >
                 {spellMenu.suggestions.length > 0 ? (
@@ -569,7 +570,8 @@ export default function Journal() {
                   onClick={ignoreSpellWord}
                   className="w-full text-left px-3 py-1.5 text-[12px] text-text-secondary hover:bg-white/[0.07]"
                 >Ignore</button>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </Card>

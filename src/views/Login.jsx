@@ -85,15 +85,15 @@ export function Login() {
         {status === 'sent' || status === 'verifying' ? (
           <div className="glass border border-border-subtle rounded-md p-8">
             <CheckCircle2 className="mx-auto mb-4 text-accent-emerald" size={32} />
-            <h2 className="font-display text-xl text-text-primary mb-2 text-center">Check your inbox</h2>
+            <h2 className="font-display text-xl text-text-primary mb-2 text-center">Enter your code</h2>
             <p className="text-[13px] text-text-secondary text-center mb-6">
-              We sent a sign-in email to <strong className="text-text-primary">{email}</strong>.
+              We emailed a <strong className="text-text-primary">6-digit code</strong> to <strong className="text-text-primary">{email}</strong>.
             </p>
 
             <div className="border-t border-border-subtle pt-6">
               <p className="text-[12px] text-text-tertiary text-center mb-4">
-                Enter the <strong className="text-text-primary">6-digit code</strong> from the email
-                <span className="block text-[11px] text-text-quaternary mt-1">(or just click the link in the email)</span>
+                Type the code below to sign in
+                <span className="block text-[11px] text-text-quaternary mt-1">Tip: the email also has a tappable link.</span>
               </p>
 
               <form onSubmit={handleVerifyCode} className="space-y-4">
@@ -145,7 +145,7 @@ export function Login() {
           <div className="glass border border-border-subtle rounded-md p-8">
             <h2 className="font-display text-2xl text-text-primary mb-1">Welcome back</h2>
             <p className="text-[13px] text-text-secondary mb-7">
-              Sign in with a magic link — no password needed.
+              Sign in with a one-time code — no password needed.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -178,7 +178,7 @@ export function Login() {
                 {status === 'loading' ? (
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 ) : (
-                  <>Send magic link <ArrowRight size={14} /></>
+                  <>Email me a 6-digit code <ArrowRight size={14} /></>
                 )}
               </button>
 

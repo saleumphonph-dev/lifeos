@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, Plus, Save, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, Plus, Save, Sparkles, FolderKanban, Target, CheckSquare } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { useApp } from '../state/AppState'
-import { cn, todayISO } from '../lib/utils'
+import { cn, getTodayInTimezone } from '../lib/utils'
+
+// Where each mention type lives, for click-through navigation.
+const MENTION_ROUTES = { project: '/projects', goal: '/goals', task: '/projects' }
+const MENTION_EMOJI = { project: '📁', goal: '🎯', task: '✓' }
 
 const MOODS = [
   { id: 'low',   emoji: '🌧',  label: 'Low',   color: '#ff5e5e' },
@@ -15,7 +20,23 @@ const MOODS = [
 
 export default function Journal() {
   const { state, dispatch } = useApp()
-  const [activeDate, setActiveDate] = useState(todayISO())
+  const navigate = useNavigate()
+  const [activeDate, setActiveDate] = useState(getTodayInTimezone())
+
+  // ── @-mention picker state ───────────────────────────────────────────
+  // `mention` is null when closed, otherwise { items, index, top, left,
+  // node, at, caretOffset } describing the active trigger.
+  const [mention, setMention] = useState(null)
+  const mentionRef = useRef(null)
+  useEffect(() => { mentionRef.current = mention }, [mention])
+
+  // Flat, searchable list of everything that can be linked.
+  const mentionables = useMemo(() => {
+    const projects = state.projects.map(p => ({ type: 'project', id: p.id, label: p.name }))
+    const goals = state.goals.filter(g => !g.archived).map(g => ({ type: 'goal', id: g.id, label: g.name }))
+    const tasks = state.tasks.map(t => ({ type: 'task', id: t.id, label: t.title }))
+    return [...projects, ...goals, ...tasks]
+  }, [state.projects, state.goals, state.tasks])
 
   const existing = state.journal.find(j => j.date === activeDate)
   const [draft, setDraft] = useState(() => existing ?? makeEmpty(activeDate))
@@ -79,6 +100,107 @@ export default function Journal() {
 
   function onEditorInput() {
     commit({ body: editorRef.current.innerHTML })
+    detectMention()
+  }
+
+  // Inspect the text just before the caret. If it looks like an in-progress
+  // "@query" token, open the picker with matching items; otherwise close it.
+  function detectMention() {
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) { setMention(null); return }
+    const range = sel.getRangeAt(0)
+    const node = range.startContainer
+    if (!range.collapsed || node.nodeType !== Node.TEXT_NODE) { setMention(null); return }
+    // Make sure the caret is actually inside our editor
+    if (!editorRef.current || !editorRef.current.contains(node)) { setMention(null); return }
+
+    const upToCaret = node.textContent.slice(0, range.startOffset)
+    const at = upToCaret.lastIndexOf('@')
+    if (at === -1) { setMention(null); return }
+    // The char before @ must be a boundary (start, space, or newline)
+    const prev = at === 0 ? ' ' : upToCaret[at - 1]
+    if (!/\s/.test(prev)) { setMention(null); return }
+    const query = upToCaret.slice(at + 1)
+    if (query.length > 40 || /[\n\t]/.test(query)) { setMention(null); return }
+
+    const q = query.trim().toLowerCase()
+    const items = mentionables
+      .filter(m => !q || m.label.toLowerCase().includes(q))
+      .slice(0, 7)
+    if (items.length === 0) { setMention(null); return }
+
+    // Position the popup just below the caret.
+    const rect = range.getBoundingClientRect()
+    const editorRect = editorRef.current.getBoundingClientRect()
+    const top = (rect.bottom || editorRect.top) + 6
+    const left = rect.left || editorRect.left
+    setMention(prev => ({
+      items, top, left, node, at, caretOffset: range.startOffset,
+      index: prev && prev.index < items.length ? prev.index : 0,
+    }))
+  }
+
+  // Replace the "@query" text with a non-editable chip linking the entity.
+  function insertMention(item) {
+    const ctx = mentionRef.current
+    if (!ctx) return
+    const range = document.createRange()
+    try {
+      range.setStart(ctx.node, ctx.at)
+      range.setEnd(ctx.node, ctx.caretOffset)
+    } catch { setMention(null); return }
+    range.deleteContents()
+
+    const chip = document.createElement('span')
+    chip.className = 'mention'
+    chip.contentEditable = 'false'
+    chip.dataset.type = item.type
+    chip.dataset.id = item.id
+    chip.dataset.route = MENTION_ROUTES[item.type] || '/dashboard'
+    chip.textContent = `${MENTION_EMOJI[item.type] || '🔗'} ${item.label}`
+    range.insertNode(chip)
+
+    // A trailing non-breaking space so the caret has somewhere to land.
+    const space = document.createTextNode(' ')
+    chip.after(space)
+    const after = document.createRange()
+    after.setStart(space, 1)
+    after.collapse(true)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(after)
+
+    setMention(null)
+    editorRef.current?.focus()
+    onEditorInput()
+  }
+
+  // Arrow/Enter/Escape navigation while the picker is open.
+  function onEditorKeyDown(e) {
+    const m = mentionRef.current
+    if (!m) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setMention(p => ({ ...p, index: (p.index + 1) % p.items.length }))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setMention(p => ({ ...p, index: (p.index - 1 + p.items.length) % p.items.length }))
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      insertMention(m.items[m.index])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setMention(null)
+    }
+  }
+
+  // Clicking a chip jumps to the linked entity's view.
+  function onEditorClick(e) {
+    const chip = e.target.closest?.('.mention')
+    if (chip && chip.dataset.route) {
+      e.preventDefault()
+      navigate(chip.dataset.route)
+    }
   }
 
   function addArrayItem(field, value) {
@@ -123,7 +245,7 @@ export default function Journal() {
   }
 
   const recentDates = useMemo(() => {
-    const dates = new Set([todayISO(), ...state.journal.map(j => j.date)])
+    const dates = new Set([getTodayInTimezone(), ...state.journal.map(j => j.date)])
     return Array.from(dates).sort().reverse().slice(0, 14)
   }, [state.journal])
 
@@ -226,14 +348,51 @@ export default function Journal() {
           </div>
 
           {/* Body */}
-          <div
-            ref={editorRef}
-            contentEditable
-            onInput={onEditorInput}
-            data-placeholder="What's on your mind? What happened today?…"
-            className="min-h-[240px] outline-none px-4 py-3 text-[16px] text-text-primary leading-[1.8] font-mono -tracking-[0.2px] [&_p]:mb-3 [&_p]:last:mb-0"
-            suppressContentEditableWarning
-          />
+          <div className="relative">
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={onEditorInput}
+              onKeyDown={onEditorKeyDown}
+              onKeyUp={(e) => { if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') detectMention() }}
+              onClick={onEditorClick}
+              onBlur={() => setTimeout(() => setMention(null), 150)}
+              data-placeholder="What's on your mind? Type @ to link a project, goal, or task…"
+              className="min-h-[240px] outline-none px-4 py-3 text-[16px] text-text-primary leading-[1.8] font-mono -tracking-[0.2px] [&_p]:mb-3 [&_p]:last:mb-0"
+              suppressContentEditableWarning
+              spellCheck="true"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+            />
+            {mention && (
+              <ul
+                className="fixed z-50 w-72 max-h-64 overflow-y-auto rounded-md border border-border-subtle bg-bg-elevated shadow-2xl py-1"
+                style={{ top: mention.top, left: mention.left }}
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                {mention.items.map((item, i) => {
+                  const Icon = item.type === 'project' ? FolderKanban : item.type === 'goal' ? Target : CheckSquare
+                  return (
+                    <li key={`${item.type}-${item.id}`}>
+                      <button
+                        type="button"
+                        onMouseEnter={() => setMention(p => ({ ...p, index: i }))}
+                        onClick={() => insertMention(item)}
+                        className={cn(
+                          'w-full text-left px-3 py-2 flex items-center gap-2.5 text-[13px]',
+                          i === mention.index ? 'bg-white/[0.07] text-text-primary' : 'text-text-secondary'
+                        )}
+                      >
+                        <Icon size={13} className="shrink-0 text-text-tertiary" />
+                        <span className="flex-1 truncate">{item.label}</span>
+                        <span className="text-[9px] uppercase tracking-wider text-text-quaternary shrink-0">{item.type}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -353,6 +512,9 @@ function ListPanel({ title, accent, items, placeholder, onAdd, onRemove }) {
           value={v}
           onChange={(e) => setV(e.target.value)}
           placeholder={placeholder}
+          spellCheck="true"
+          autoCorrect="on"
+          autoCapitalize="sentences"
           className="flex-1 h-9 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] outline-none focus:border-border -tracking-[0.15px]"
         />
         <button type="submit" className="w-8 h-8 rounded-sm border border-border-subtle bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-secondary">
@@ -381,6 +543,9 @@ function DecisionForm({ onAdd }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="What's the decision? (e.g. Hire a junior dev for Liepngarm)"
+        spellCheck="true"
+        autoCorrect="on"
+        autoCapitalize="sentences"
         className="flex-1 h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] outline-none focus:border-border -tracking-[0.2px]"
       />
       <input

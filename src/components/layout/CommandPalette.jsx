@@ -58,6 +58,9 @@ export function CommandPalette({ open, onClose }) {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search views, projects, tasks…"
+                spellCheck="false"
+                autoCorrect="off"
+                autoCapitalize="off"
                 className="flex-1 bg-transparent text-[13px] text-text-primary placeholder:text-text-quaternary outline-none"
               />
               <kbd className="text-[10px] font-mono text-text-tertiary px-1.5 py-0.5 rounded bg-white/[0.06]">esc</kbd>

@@ -10,7 +10,7 @@ import { StatTile } from '../components/ui/StatTile'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { Badge, statusTone, priorityTone } from '../components/ui/Badge'
 import { useApp } from '../state/AppState'
-import { relativeDate } from '../lib/utils'
+import { relativeDate, getTodayInTimezone } from '../lib/utils'
 
 export default function Dashboard() {
   const { state } = useApp()
@@ -28,7 +28,7 @@ export default function Dashboard() {
     return 'Good evening'
   }, [])
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getTodayInTimezone()
   const todaySessions = focusSessions.filter(s => (s.date || s.startedAt || '').slice(0, 10) === todayStr)
   const focusMinutes = todaySessions.reduce((sum, s) => sum + (s.duration || 0), 0)
   const completedToday = tasks.filter(t => t.status === 'done' && (t.completedAt || '').slice(0, 10) === todayStr).length
@@ -83,7 +83,7 @@ export default function Dashboard() {
   }, [tasks, focusSessions])
 
   const habitCompletionToday = habits.filter(h => {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = getTodayInTimezone()
     return (h.completedDates || []).includes(today)
   }).length
 

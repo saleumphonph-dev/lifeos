@@ -141,6 +141,35 @@ input[type='number'] { -moz-appearance: textfield; }
   pointer-events: none;
 }
 
+/* @-mention chips inside the journal editor */
+.mention {
+  display: inline;
+  background: rgba(74, 158, 255, 0.14);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin: 0 1px;
+  font-size: 0.85em;
+  font-family: inherit;
+  color: #cfe3ff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.mention:hover { background: rgba(74, 158, 255, 0.24); }
+.mention[data-type='goal'] {
+  background: rgba(46, 229, 166, 0.13);
+  border-color: rgba(46, 229, 166, 0.3);
+  color: #b7f5e0;
+}
+.mention[data-type='goal']:hover { background: rgba(46, 229, 166, 0.22); }
+.mention[data-type='task'] {
+  background: rgba(167, 139, 250, 0.14);
+  border-color: rgba(167, 139, 250, 0.3);
+  color: #ddd2ff;
+}
+.mention[data-type='task']:hover { background: rgba(167, 139, 250, 0.24); }
+
 /* Kanban dragging */
 .dragging {
   opacity: 0.4;

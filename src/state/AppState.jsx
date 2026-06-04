@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react'
 import { storage } from '../lib/storage'
-import { uid } from '../lib/utils'
+import { uid, getTodayInTimezone } from '../lib/utils'
 import { pushState, pullState, onAuthChange } from '../lib/sync'
 import { isSupabaseReady } from '../lib/supabase'
 import {
@@ -87,7 +87,7 @@ function reducerCore(state, action) {
       return { ...state, journal: [{ id: uid(), ...action.entry }, ...state.journal] }
     }
     case 'habit.toggle': {
-      const today = new Date().toISOString().slice(0, 10)
+      const today = getTodayInTimezone()
       return {
         ...state,
         habits: state.habits.map(h => {
@@ -106,12 +106,16 @@ function reducerCore(state, action) {
       return {
         ...state,
         goals: [
-          { id: uid(), progress: 0, status: 'on_track', linkedProjectIds: [], type: 'monthly', targetDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), ...action.goal },
+          { id: uid(), progress: 0, status: 'on_track', linkedProjectIds: [], archived: false, type: 'monthly', metric: 'percent', targetDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), ...action.goal },
           ...state.goals,
         ],
       }
     case 'goal.update':
       return { ...state, goals: state.goals.map(g => (g.id === action.id ? { ...g, ...action.patch } : g)) }
+    case 'goal.archive':
+      return { ...state, goals: state.goals.map(g => (g.id === action.id ? { ...g, archived: true } : g)) }
+    case 'goal.unarchive':
+      return { ...state, goals: state.goals.map(g => (g.id === action.id ? { ...g, archived: false } : g)) }
     case 'goal.remove':
       return { ...state, goals: state.goals.filter(g => g.id !== action.id) }
     case 'habit.add':
@@ -175,11 +179,13 @@ function reducerCore(state, action) {
 function computeStreak(dates) {
   const set = new Set(dates)
   let streak = 0
-  const today = new Date()
+  const todayISO = getTodayInTimezone()
+  const today = new Date(todayISO)
   for (let i = 0; i < 365; i++) {
     const d = new Date(today)
     d.setDate(today.getDate() - i)
-    if (set.has(d.toISOString().slice(0, 10))) streak++
+    const dateISO = d.toISOString().slice(0, 10)
+    if (set.has(dateISO)) streak++
     else if (i > 0) break
   }
   return streak

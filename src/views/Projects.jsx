@@ -9,7 +9,7 @@ import { Plus, Clock, Hash, TrendingUp, LayoutGrid, GitBranch, X } from 'lucide-
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge, priorityTone } from '../components/ui/Badge'
 import { useApp } from '../state/AppState'
-import { relativeDate, cn } from '../lib/utils'
+import { relativeDate, cn, getTodayInTimezone } from '../lib/utils'
 
 const COLUMNS = [
   { id: 'backlog',     label: 'Backlog',     accent: '#6e6e76' },
@@ -45,8 +45,12 @@ export default function Projects() {
   }
 
   function handleAddTaskToColumn(status) {
-    const title = prompt('New task title:')
+    const title = prompt('Task title:')
     if (!title?.trim()) return
+
+    const dueDate = prompt('Due date (YYYY-MM-DD):', getTodayInTimezone())
+    if (!dueDate?.trim()) return
+
     // Use the first project, or filtered project if one is active
     const projectId = filterProject !== 'all'
       ? filterProject
@@ -55,7 +59,7 @@ export default function Projects() {
       alert('Create a project first before adding tasks.')
       return
     }
-    dispatch({ type: 'task.add', task: { title: title.trim(), status, projectId } })
+    dispatch({ type: 'task.add', task: { title: title.trim(), status, projectId, dueDate: dueDate.trim() } })
   }
 
   function handleRemoveTask(id, title) {
@@ -184,6 +188,9 @@ export default function Projects() {
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               placeholder="Project name"
+              spellCheck="true"
+              autoCorrect="on"
+              autoCapitalize="sentences"
               className="h-6 bg-transparent text-[12px] text-text-primary outline-none w-32"
             />
             <button type="submit" className="text-[11px] text-accent-blue hover:text-accent-emerald font-medium">Add</button>

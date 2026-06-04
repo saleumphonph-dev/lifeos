@@ -3,13 +3,13 @@ import * as Icons from 'lucide-react'
 import { Flame, Check, Plus, X } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { useApp } from '../state/AppState'
-import { cn, todayISO } from '../lib/utils'
+import { cn, getTodayInTimezone } from '../lib/utils'
 
 const HABIT_COLORS = ['#4a9eff', '#2ee5a6', '#ffb547', '#a78bfa', '#ff7eb3', '#5eead4', '#ff5e5e']
 
 export default function Habits() {
   const { state, dispatch } = useApp()
-  const today = todayISO()
+  const today = getTodayInTimezone()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#4a9eff')
@@ -196,6 +196,9 @@ export default function Habits() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Morning workout"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
                   className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none focus:border-accent-blue/40 -tracking-[0.2px]"
                 />
               </div>

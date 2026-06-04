@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { useApp } from '../../state/AppState'
+import { getTodayInTimezone } from '../../lib/utils'
 
 export function NewTaskModal({ open, onClose }) {
   const { state, dispatch } = useApp()
@@ -10,11 +11,12 @@ export function NewTaskModal({ open, onClose }) {
   const [projectId, setProjectId] = useState(state.projects[0]?.id ?? '')
   const [priority, setPriority] = useState('P2')
   const [hours, setHours] = useState(2)
+  const [dueDate, setDueDate] = useState(getTodayInTimezone())
   const inputRef = useRef(null)
 
   useEffect(() => {
     if (open) {
-      setTitle(''); setPriority('P2'); setHours(2)
+      setTitle(''); setPriority('P2'); setHours(2); setDueDate(getTodayInTimezone())
       setProjectId(state.projects[0]?.id ?? '')
       setTimeout(() => inputRef.current?.focus(), 60)
     }
@@ -33,7 +35,7 @@ export function NewTaskModal({ open, onClose }) {
     if (!title.trim()) return
     dispatch({
       type: 'task.add',
-      task: { title: title.trim(), projectId, priority, estimatedHours: Number(hours), status: 'backlog', iceScore: 6, tags: [] },
+      task: { title: title.trim(), projectId, priority, estimatedHours: Number(hours), status: 'backlog', iceScore: 6, tags: [], dueDate },
     })
     onClose()
   }
@@ -70,6 +72,9 @@ export function NewTaskModal({ open, onClose }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Task title…"
+              spellCheck="true"
+              autoCorrect="on"
+              autoCapitalize="sentences"
               className="w-full h-11 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary placeholder:text-text-quaternary outline-none focus:border-accent-blue/40"
             />
 
@@ -78,6 +83,9 @@ export function NewTaskModal({ open, onClose }) {
                 <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="select">
                   {state.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+              </Field>
+              <Field label="Due date">
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="select" />
               </Field>
               <Field label="Priority">
                 <select value={priority} onChange={(e) => setPriority(e.target.value)} className="select">

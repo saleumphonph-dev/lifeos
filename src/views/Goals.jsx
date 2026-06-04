@@ -4,7 +4,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Badge, statusTone } from '../components/ui/Badge'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { useApp } from '../state/AppState'
-import { cn, relativeDate } from '../lib/utils'
+import { cn, relativeDate, formatMoney } from '../lib/utils'
 
 const TYPES = [
   { id: 'annual', label: 'Annual', icon: Compass },
@@ -16,26 +16,55 @@ const TYPES = [
 export default function Goals() {
   const { state, dispatch } = useApp()
   const [filter, setFilter] = useState('all')
+  const [showArchived, setShowArchived] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState('monthly')
   const [newDate, setNewDate] = useState(() => new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10))
+  const [newMetric, setNewMetric] = useState('percent') // 'percent' | 'lak' | 'usd'
+  const [newCurrent, setNewCurrent] = useState('')
+  const [newTarget, setNewTarget] = useState('')
 
   function handleAdd(e) {
     e.preventDefault()
     if (!newName.trim()) return
-    dispatch({ type: 'goal.add', goal: { name: newName.trim(), type: newType, targetDate: newDate } })
-    setNewName('')
+    const goal = { name: newName.trim(), type: newType, targetDate: newDate }
+    if (newMetric === 'lak' || newMetric === 'usd') {
+      const target = Number(newTarget) || 0
+      const current = Number(newCurrent) || 0
+      goal.metric = 'currency'
+      goal.currency = newMetric === 'usd' ? '$' : '₭'
+      goal.targetValue = target
+      goal.currentValue = current
+      goal.progress = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0
+    }
+    dispatch({ type: 'goal.add', goal })
+    setNewName(''); setNewMetric('percent'); setNewCurrent(''); setNewTarget('')
     setAdding(false)
   }
 
-  function handleRemove(id) {
-    if (confirm('Remove this goal?')) {
-      dispatch({ type: 'goal.remove', id })
+  // Update a currency goal's current value, re-deriving its progress %.
+  function setGoalCurrentValue(g, raw) {
+    const current = Number(raw) || 0
+    const target = g.targetValue || 0
+    const progress = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0
+    dispatch({ type: 'goal.update', id: g.id, patch: { currentValue: current, progress } })
+  }
+
+  function handleArchive(id, isArchived) {
+    if (isArchived) {
+      if (confirm('Unarchive this goal?')) {
+        dispatch({ type: 'goal.unarchive', id })
+      }
+    } else {
+      if (confirm('Archive this goal? You can view it later in archived goals.')) {
+        dispatch({ type: 'goal.archive', id })
+      }
     }
   }
 
-  const goals = filter === 'all' ? state.goals : state.goals.filter(g => g.type === filter)
+  const goals = (filter === 'all' ? state.goals : state.goals.filter(g => g.type === filter)).filter(g => showArchived ? g.archived : !g.archived)
+  const archivedCount = state.goals.filter(g => g.archived).length
 
   return (
     <div className="space-y-5">
@@ -61,6 +90,17 @@ export default function Goals() {
               <t.icon size={11} /> {t.label}
             </button>
           ))}
+          {archivedCount > 0 && (
+            <>
+              <div className="w-px h-4 bg-border-subtle opacity-50" />
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={cn('h-7 px-3 rounded-[6px] text-[11px]', showArchived ? 'bg-white/[0.08] text-text-primary' : 'text-text-tertiary hover:text-text-secondary')}
+              >
+                {showArchived ? 'Archived' : `Archived (${archivedCount})`}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -102,11 +142,11 @@ export default function Goals() {
         {goals.map(g => {
           const linkedProjects = state.projects.filter(p => (g.linkedProjectIds || []).includes(p.id))
           return (
-            <Card key={g.id} className="relative group">
+            <Card key={g.id} className={cn('relative group', g.archived && 'bg-white/[0.02] opacity-60')}>
               <button
-                onClick={() => handleRemove(g.id)}
+                onClick={() => handleArchive(g.id, g.archived)}
                 className="absolute top-3 right-3 w-7 h-7 rounded-sm flex items-center justify-center text-text-quaternary hover:text-accent-red hover:bg-white/[0.06] transition-colors opacity-0 group-hover:opacity-100"
-                title="Remove goal"
+                title={g.archived ? 'Unarchive goal' : 'Archive goal'}
               >
                 <X size={14} />
               </button>
@@ -127,6 +167,12 @@ export default function Goals() {
                     <Badge tone={statusTone[g.status]}>{g.status.replace('_',' ')}</Badge>
                   </div>
                   <h3 className="text-[16px] font-semibold text-text-primary leading-[1.4] -tracking-[0.2px]">{g.name}</h3>
+                  {g.metric === 'currency' && (
+                    <div className="font-mono text-[13px] text-text-secondary mt-1 tnum">
+                      {formatMoney(g.currentValue, g.currency)}
+                      <span className="text-text-quaternary"> / {formatMoney(g.targetValue, g.currency)}</span>
+                    </div>
+                  )}
                   <div className="text-[11px] text-text-tertiary mt-1">
                     Target {relativeDate(g.targetDate)}
                   </div>
@@ -147,16 +193,32 @@ export default function Goals() {
                 </div>
               )}
 
-              <div className="mt-4 flex items-center gap-2">
-                <input
-                  type="range" min="0" max="100" step="1"
-                  value={g.progress}
-                  onChange={(e) => dispatch({ type: 'goal.update', id: g.id, patch: { progress: Number(e.target.value) } })}
-                  className="flex-1"
-                  style={{ accentColor: '#4a9eff' }}
-                />
-                <span className="font-mono text-[11px] text-text-tertiary tnum w-10 text-right">{g.progress}%</span>
-              </div>
+              {g.metric === 'currency' ? (
+                <div className="mt-4 flex items-center gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.14em] text-text-quaternary shrink-0">Current</label>
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="font-mono text-[12px] text-text-tertiary">{g.currency}</span>
+                    <input
+                      type="number" min="0" step="any"
+                      value={g.currentValue ?? 0}
+                      onChange={(e) => setGoalCurrentValue(g, e.target.value)}
+                      className="flex-1 h-8 px-2 rounded-sm bg-white/[0.04] border border-border-subtle text-[13px] font-mono text-text-primary outline-none focus:border-accent-blue/40 tnum"
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] text-text-tertiary tnum w-10 text-right">{g.progress}%</span>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center gap-2">
+                  <input
+                    type="range" min="0" max="100" step="1"
+                    value={g.progress}
+                    onChange={(e) => dispatch({ type: 'goal.update', id: g.id, patch: { progress: Number(e.target.value) } })}
+                    className="flex-1"
+                    style={{ accentColor: '#4a9eff' }}
+                  />
+                  <span className="font-mono text-[11px] text-text-tertiary tnum w-10 text-right">{g.progress}%</span>
+                </div>
+              )}
             </Card>
           )
         })}
@@ -171,6 +233,9 @@ export default function Goals() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Launch LANI v2 capsule"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
                   className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] text-text-primary outline-none focus:border-accent-blue/40 -tracking-[0.2px]"
                 />
               </div>
@@ -195,6 +260,47 @@ export default function Goals() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-[0.14em] text-text-tertiary font-medium block mb-1.5">Measure by</label>
+                <div className="flex items-center gap-1 p-1 rounded-sm bg-white/[0.03] border border-border-subtle">
+                  {[
+                    { id: 'percent', label: '% Progress' },
+                    { id: 'lak', label: 'Amount ₭' },
+                    { id: 'usd', label: 'Amount $' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setNewMetric(opt.id)}
+                      className={cn('flex-1 h-7 rounded-[6px] text-[11px]', newMetric === opt.id ? 'bg-white/[0.08] text-text-primary' : 'text-text-tertiary hover:text-text-secondary')}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+              {(newMetric === 'lak' || newMetric === 'usd') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-[0.14em] text-text-tertiary font-medium block mb-1.5">Current ({newMetric === 'usd' ? '$' : '₭'})</label>
+                    <input
+                      type="number" min="0" step="any"
+                      value={newCurrent}
+                      onChange={(e) => setNewCurrent(e.target.value)}
+                      placeholder="0"
+                      className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] font-mono text-text-primary outline-none focus:border-accent-blue/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-[0.14em] text-text-tertiary font-medium block mb-1.5">Target ({newMetric === 'usd' ? '$' : '₭'})</label>
+                    <input
+                      type="number" min="0" step="any"
+                      value={newTarget}
+                      onChange={(e) => setNewTarget(e.target.value)}
+                      placeholder="e.g. 1200000000"
+                      className="w-full h-10 px-3 rounded-sm bg-white/[0.04] border border-border-subtle text-[14px] font-mono text-text-primary outline-none focus:border-accent-blue/40"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2 pt-1">
                 <button type="submit" className="flex-1 h-9 rounded-sm bg-accent-blue text-white text-[12px] font-medium">Add goal</button>
                 <button type="button" onClick={() => { setAdding(false); setNewName('') }} className="h-9 px-4 rounded-sm bg-white/[0.04] border border-border-subtle text-[12px] text-text-secondary">Cancel</button>

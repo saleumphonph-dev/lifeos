@@ -145,18 +145,27 @@ export default function Journal() {
     runSpellcheck()
   }
 
-  // ── Right-click spelling menu ────────────────────────────────────────
-  function onEditorContextMenu(e) {
+  // ── Spelling correction menu ─────────────────────────────────────────
+  // Opens when a misspelled word is clicked (or right-clicked). The menu is
+  // anchored just below the word so it doesn't sit under the pointer.
+  function openSpellMenuAt(clientX, clientY) {
     const mod = spellRef.current
-    if (!mod || !mod.isSupported()) return // fall back to the native menu
-    const hit = mod.wordAtPoint(editorRef.current, e.clientX, e.clientY)
-    if (!hit) { setSpellMenu(null); return }
-    e.preventDefault()
+    if (!mod || !mod.isSupported()) return false
+    const hit = mod.wordAtPoint(editorRef.current, clientX, clientY)
+    if (!hit) return false
+    const rect = hit.range.getBoundingClientRect()
     setSpellMenu({
-      x: e.clientX, y: e.clientY,
+      x: rect.left,
+      y: rect.bottom + 4,
       word: hit.word, node: hit.node, start: hit.start, end: hit.end,
       suggestions: hit.suggestions,
     })
+    return true
+  }
+
+  function onEditorContextMenu(e) {
+    // Only hijack the native menu when we actually hit a misspelled word.
+    if (openSpellMenuAt(e.clientX, e.clientY)) e.preventDefault()
   }
 
   // Replace the misspelled word's range with the chosen text.
@@ -303,13 +312,16 @@ export default function Journal() {
     }
   }
 
-  // Clicking a chip jumps to the linked entity's view.
+  // Clicking a chip jumps to the linked entity's view; clicking a misspelled
+  // word opens its suggestion menu.
   function onEditorClick(e) {
     const chip = e.target.closest?.('.mention')
     if (chip && chip.dataset.route) {
       e.preventDefault()
       navigate(chip.dataset.route)
+      return
     }
+    openSpellMenuAt(e.clientX, e.clientY)
   }
 
   function addArrayItem(field, value) {

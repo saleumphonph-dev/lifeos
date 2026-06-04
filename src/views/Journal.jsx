@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Plus, Save, Sparkles, FolderKanban, Target, CheckSquare } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
@@ -155,13 +155,34 @@ export default function Journal() {
     if (!hit) return false
     const rect = hit.range.getBoundingClientRect()
     setSpellMenu({
-      x: rect.left,
-      y: rect.bottom + 4,
+      anchorLeft: rect.left, anchorTop: rect.top, anchorBottom: rect.bottom,
       word: hit.word, node: hit.node, start: hit.start, end: hit.end,
       suggestions: hit.suggestions,
     })
     return true
   }
+
+  // After the menu renders, measure it and clamp inside the viewport —
+  // shift left if it overflows the right edge, flip above the word if it
+  // would run off the bottom.
+  const spellMenuRef = useRef(null)
+  useLayoutEffect(() => {
+    if (!spellMenu || !spellMenuRef.current) return
+    const el = spellMenuRef.current
+    const { width, height } = el.getBoundingClientRect()
+    const pad = 8
+    let left = spellMenu.anchorLeft
+    let top = spellMenu.anchorBottom + 4
+    if (left + width > window.innerWidth - pad) left = window.innerWidth - width - pad
+    if (left < pad) left = pad
+    if (top + height > window.innerHeight - pad) {
+      const above = spellMenu.anchorTop - height - 4
+      top = above > pad ? above : Math.max(pad, window.innerHeight - height - pad)
+    }
+    el.style.left = `${left}px`
+    el.style.top = `${top}px`
+    el.style.visibility = 'visible'
+  }, [spellMenu])
 
   function onEditorContextMenu(e) {
     // Only hijack the native menu when we actually hit a misspelled word.
@@ -518,8 +539,9 @@ export default function Journal() {
             {spellMenu && (
               <div
                 data-spell-menu
+                ref={spellMenuRef}
                 className="fixed z-50 w-56 rounded-md border border-border-subtle bg-bg-elevated shadow-2xl py-1"
-                style={{ top: spellMenu.y, left: spellMenu.x }}
+                style={{ top: spellMenu.anchorBottom + 4, left: spellMenu.anchorLeft, visibility: 'hidden' }}
               >
                 {spellMenu.suggestions.length > 0 ? (
                   spellMenu.suggestions.map(s => (

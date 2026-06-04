@@ -360,6 +360,7 @@ export default function Journal() {
               data-placeholder="What's on your mind? Type @ to link a project, goal, or task…"
               className="min-h-[240px] outline-none px-4 py-3 text-[16px] text-text-primary leading-[1.8] font-mono -tracking-[0.2px] [&_p]:mb-3 [&_p]:last:mb-0"
               suppressContentEditableWarning
+              lang="en"
               spellCheck="true"
               autoCorrect="on"
               autoCapitalize="sentences"

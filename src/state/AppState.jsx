@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react'
 import { storage } from '../lib/storage'
+import { writeDailyBackup } from '../lib/backup'
 import { uid, getTodayInTimezone } from '../lib/utils'
 import { pushState, pullState, onAuthChange } from '../lib/sync'
 import { isSupabaseReady } from '../lib/supabase'
@@ -39,6 +40,35 @@ function reducer(state, action) {
   // a Supabase pull — that's not a "user change", just a hydration.
   if (action.type === 'state.hydrate') {
     return { ...action.state, _isSeed: false }
+  }
+
+  // "Reset to demo" loads sample data LOCALLY ONLY. It is flagged _isSeed so
+  // it can NEVER be pushed to Supabase — this is what previously let demo
+  // data clobber real cloud data. It's now a safe, local-only preview.
+  if (action.type === 'state.reset') {
+    return {
+      user: USER,
+      projects: SEED_PROJECTS, tasks: SEED_TASKS, goals: SEED_GOALS,
+      habits: SEED_HABITS, journal: SEED_JOURNAL, focusSessions: SEED_FOCUS,
+      settings: state.settings ?? { soundsEnabled: true, focusDuration: 25, breakDuration: 5 },
+      _isSeed: true,
+      lastModifiedAt: null,
+    }
+  }
+
+  // "Clear all" is an authoritative wipe. We stamp clearedAt so the sync
+  // merge treats this empty state as intentional (won't resurrect old items
+  // from the cloud) as long as it's newer than the remote snapshot.
+  if (action.type === 'state.clear') {
+    const now = new Date().toISOString()
+    return {
+      user: state.user,
+      projects: [], tasks: [], goals: [], habits: [], journal: [], focusSessions: [],
+      settings: state.settings,
+      _isSeed: false,
+      clearedAt: now,
+      lastModifiedAt: now,
+    }
   }
 
   const next = reducerCore(state, action)
@@ -147,32 +177,72 @@ function reducerCore(state, action) {
       }
     case 'settings.update':
       return { ...state, settings: { ...state.settings, ...action.patch } }
-    case 'state.reset':
-      // Re-seeds with the original mock data
-      return {
-        user: USER,
-        projects: SEED_PROJECTS,
-        tasks: SEED_TASKS,
-        goals: SEED_GOALS,
-        habits: SEED_HABITS,
-        journal: SEED_JOURNAL,
-        focusSessions: SEED_FOCUS,
-        settings: { soundsEnabled: true, focusDuration: 25, breakDuration: 5 },
-      }
-    case 'state.clear':
-      // Wipes everything — start fresh for actual daily logging
-      return {
-        user: state.user,
-        projects: [],
-        tasks: [],
-        goals: [],
-        habits: [],
-        journal: [],
-        focusSessions: [],
-        settings: state.settings,
-      }
+    // state.reset and state.clear are handled in the top-level reducer.
     default:
       return state
+  }
+}
+
+// ── Sync merge ─────────────────────────────────────────────────────────
+// Combine a local snapshot with a remote one WITHOUT losing data. Items are
+// unioned by id; when the same id exists on both sides, the snapshot that was
+// modified more recently wins for that item's fields. This replaces the old
+// "whole-snapshot, newest-wins" behavior that let one device wipe another.
+function mergeById(localArr = [], remoteArr = [], preferRemote, key = 'id') {
+  const map = new Map()
+  const lower = preferRemote ? localArr : remoteArr
+  const higher = preferRemote ? remoteArr : localArr
+  for (const it of lower) if (it && it[key] != null) map.set(it[key], it)
+  for (const it of higher) if (it && it[key] != null) map.set(it[key], it)
+  return Array.from(map.values())
+}
+
+// Habits need their check-in history preserved from BOTH devices, so we union
+// completedDates and recompute the streak rather than picking one side.
+function mergeHabits(localArr = [], remoteArr = [], preferRemote) {
+  const ids = new Set([...localArr, ...remoteArr].filter(Boolean).map(h => h.id))
+  const localById = new Map(localArr.filter(Boolean).map(h => [h.id, h]))
+  const remoteById = new Map(remoteArr.filter(Boolean).map(h => [h.id, h]))
+  const out = []
+  for (const id of ids) {
+    const l = localById.get(id)
+    const r = remoteById.get(id)
+    if (l && r) {
+      const dates = Array.from(new Set([...(l.completedDates || []), ...(r.completedDates || [])])).sort()
+      const base = preferRemote ? { ...l, ...r } : { ...r, ...l }
+      out.push({ ...base, completedDates: dates, streak: computeStreak(dates) })
+    } else {
+      out.push(l || r)
+    }
+  }
+  return out
+}
+
+export function mergeState(local, remote, remoteSyncedAt) {
+  if (!remote) return local
+  const localTime = local.lastModifiedAt ? Date.parse(local.lastModifiedAt) : 0
+  const remoteTime = remoteSyncedAt ? Date.parse(remoteSyncedAt) : 0
+  const preferRemote = remoteTime > localTime
+
+  // Respect an intentional local "Clear all": if we cleared more recently than
+  // the remote snapshot, don't resurrect the remote's old items.
+  if (local.clearedAt && Date.parse(local.clearedAt) > remoteTime) {
+    return local
+  }
+
+  const base = preferRemote ? remote : local // user/settings come from newer side
+  return {
+    ...base,
+    user: base.user,
+    settings: base.settings,
+    projects: mergeById(local.projects, remote.projects, preferRemote),
+    tasks: mergeById(local.tasks, remote.tasks, preferRemote),
+    goals: mergeById(local.goals, remote.goals, preferRemote),
+    habits: mergeHabits(local.habits, remote.habits, preferRemote),
+    focusSessions: mergeById(local.focusSessions, remote.focusSessions, preferRemote),
+    journal: mergeById(local.journal, remote.journal, preferRemote, 'date'),
+    _isSeed: false,
+    lastModifiedAt: new Date().toISOString(),
   }
 }
 
@@ -207,6 +277,9 @@ export function AppStateProvider({ children }) {
     // cloud snapshot before we've had a chance to pull it.
     if (state._isSeed) return
 
+    // Keep a rolling on-device daily backup (outside the sync layer).
+    writeDailyBackup(state)
+
     clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => pushState(state), 3000)
   }, [state])
@@ -224,15 +297,16 @@ export function AppStateProvider({ children }) {
       if (cancelled || !remote) return
 
       const local = stateRef.current
-      const localTime = local.lastModifiedAt ? new Date(local.lastModifiedAt).getTime() : 0
-      const remoteTime = remote.syncedAt ? new Date(remote.syncedAt).getTime() : 0
 
-      // Remote wins when: local is still seed data, OR remote is newer than
-      // anything we've modified locally. This keeps unsynced offline edits
-      // safe while still bringing fresh devices up to speed.
-      const shouldUseRemote = local._isSeed || remoteTime > localTime
-      if (shouldUseRemote) {
+      if (local._isSeed) {
+        // Fresh device showing demo data — adopt the cloud snapshot wholesale.
         dispatch({ type: 'state.hydrate', state: remote.payload })
+      } else {
+        // Real local data — MERGE with the cloud rather than overwriting, so
+        // neither side can wipe the other. The merged result is then pushed
+        // back, healing any items a previous bad sync had dropped.
+        const merged = mergeState(local, remote.payload, remote.syncedAt)
+        dispatch({ type: 'state.hydrate', state: merged })
       }
     }
 

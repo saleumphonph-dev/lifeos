@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Plus, Command, Settings, Trash2, RotateCcw, LogOut, RefreshCw } from 'lucide-react'
+import { Bell, Plus, Command, Settings, Trash2, RotateCcw, LogOut, RefreshCw, Download, Upload } from 'lucide-react'
 import { NAV } from './Sidebar'
-import { useApp } from '../../state/AppState'
+import { useApp, mergeState } from '../../state/AppState'
 import { isSupabaseReady } from '../../lib/supabase'
 import { signOut } from '../../lib/sync'
+import { exportStateToFile, readImportedFile } from '../../lib/backup'
 
 export function Topbar({ onCommand, onNewTask }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { dispatch } = useApp()
+  const { state, dispatch } = useApp()
+  const fileRef = useRef(null)
   const current = NAV.find((n) => pathname.startsWith(n.to))
   const now = new Date()
   const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -34,10 +36,31 @@ export function Topbar({ onCommand, onNewTask }) {
   }
 
   function resetToDemo() {
-    if (confirm('Reset to demo data?\n\nThis restores the original sample projects, tasks, and habits. Your current data will be lost.')) {
+    if (confirm('Show demo data on THIS device?\n\nThis loads the sample projects locally for a preview. It will NOT sync or overwrite your cloud data — sign in / reload to get your real data back.')) {
       dispatch({ type: 'state.reset' })
       setMenuOpen(false)
     }
+  }
+
+  function exportData() {
+    exportStateToFile(state)
+    setMenuOpen(false)
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-importing the same file later
+    if (!file) return
+    try {
+      const imported = await readImportedFile(file)
+      // Merge rather than overwrite, so importing can only ADD data back.
+      const merged = mergeState(state, imported, new Date().toISOString())
+      dispatch({ type: 'state.hydrate', state: merged })
+      alert('Backup imported and merged with your current data.')
+    } catch (err) {
+      alert(err.message)
+    }
+    setMenuOpen(false)
   }
 
   async function handleSignOut() {
@@ -115,6 +138,28 @@ export function Topbar({ onCommand, onNewTask }) {
               <div className="px-3 py-2 border-b border-border-subtle">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-text-quaternary font-medium">Data</div>
               </div>
+              <button
+                onClick={exportData}
+                className="w-full px-3 py-2.5 flex items-start gap-2.5 hover:bg-white/[0.04] text-left transition-colors"
+              >
+                <Download size={14} className="text-accent-emerald mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-[12.5px] text-text-primary font-medium">Export backup</div>
+                  <div className="text-[10.5px] text-text-tertiary mt-0.5">Download all your data as a JSON file</div>
+                </div>
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full px-3 py-2.5 flex items-start gap-2.5 hover:bg-white/[0.04] text-left transition-colors"
+              >
+                <Upload size={14} className="text-accent-blue mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-[12.5px] text-text-primary font-medium">Import backup</div>
+                  <div className="text-[10.5px] text-text-tertiary mt-0.5">Restore from a JSON file (merges, never wipes)</div>
+                </div>
+              </button>
+              <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImportFile} />
+              <div className="border-t border-border-subtle" />
               <button
                 onClick={clearAllData}
                 className="w-full px-3 py-2.5 flex items-start gap-2.5 hover:bg-white/[0.04] text-left transition-colors"

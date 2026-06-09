@@ -47,8 +47,10 @@ export function Login() {
   async function handleVerifyCode(e) {
     e.preventDefault()
     const trimmed = code.replace(/\s/g, '')
-    if (trimmed.length !== 6) {
-      setErrMsg('Enter the 6-digit code from your email')
+    // Supabase OTP length is configurable (6–10 digits) — accept any in range
+    // rather than hard-coding 6.
+    if (trimmed.length < 6) {
+      setErrMsg('Enter the code from your email')
       return
     }
     setStatus('verifying')
@@ -87,7 +89,7 @@ export function Login() {
             <CheckCircle2 className="mx-auto mb-4 text-accent-emerald" size={32} />
             <h2 className="font-display text-xl text-text-primary mb-2 text-center">Enter your code</h2>
             <p className="text-[13px] text-text-secondary text-center mb-6">
-              We emailed a <strong className="text-text-primary">6-digit code</strong> to <strong className="text-text-primary">{email}</strong>.
+              We emailed a <strong className="text-text-primary">sign-in code</strong> to <strong className="text-text-primary">{email}</strong>.
             </p>
 
             <div className="border-t border-border-subtle pt-6">
@@ -104,10 +106,10 @@ export function Login() {
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     pattern="[0-9]*"
-                    maxLength={6}
+                    maxLength={10}
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="123456"
+                    placeholder="Enter code"
                     autoFocus
                     className="w-full h-11 pl-9 pr-4 rounded-sm bg-white/[0.04] border border-border-subtle text-[16px] text-text-primary outline-none focus:border-accent-blue/50 transition-colors font-mono tracking-[0.3em] text-center"
                   />
@@ -119,7 +121,7 @@ export function Login() {
 
                 <button
                   type="submit"
-                  disabled={status === 'verifying' || code.length !== 6}
+                  disabled={status === 'verifying' || code.length < 6}
                   className="w-full h-11 rounded-sm bg-gradient-to-r from-accent-blue to-accent-emerald text-bg-base font-semibold text-[14px] flex items-center justify-center gap-2 shadow-[0_0_30px_-8px_rgba(74,158,255,0.5)] hover:shadow-[0_0_40px_-8px_rgba(74,158,255,0.7)] transition-shadow disabled:opacity-50"
                 >
                   {status === 'verifying' ? (
@@ -178,7 +180,7 @@ export function Login() {
                 {status === 'loading' ? (
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 ) : (
-                  <>Email me a 6-digit code <ArrowRight size={14} /></>
+                  <>Email me a sign-in code <ArrowRight size={14} /></>
                 )}
               </button>
 

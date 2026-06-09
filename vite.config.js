@@ -1,13 +1,27 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
 
 // Base path: '/lifeos/' for GitHub Pages project page, '/' otherwise.
 // Set via VITE_BASE env var at build time (GitHub Actions sets this).
 const BASE = process.env.VITE_BASE || '/'
 
+// Build identity — surfaced in the app so you can confirm which build is live.
+const APP_VERSION = process.env.npm_package_version || '0.1.0'
+let APP_COMMIT = (process.env.GITHUB_SHA || '').slice(0, 7)
+if (!APP_COMMIT) {
+  try { APP_COMMIT = execSync('git rev-parse --short HEAD').toString().trim() } catch { APP_COMMIT = 'dev' }
+}
+const BUILD_TIME = new Date().toISOString()
+
 export default defineConfig({
   base: BASE,
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_COMMIT__: JSON.stringify(APP_COMMIT),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+  },
   plugins: [
     react(),
     VitePWA({

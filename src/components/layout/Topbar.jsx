@@ -6,6 +6,7 @@ import { useApp, mergeState } from '../../state/AppState'
 import { isSupabaseReady } from '../../lib/supabase'
 import { signOut } from '../../lib/sync'
 import { exportStateToFile, readImportedFile } from '../../lib/backup'
+import { versionLabel } from '../../lib/version'
 
 export function Topbar({ onCommand, onNewTask }) {
   const { pathname } = useLocation()
@@ -202,6 +203,9 @@ export function Topbar({ onCommand, onNewTask }) {
                   </button>
                 </>
               )}
+              <div className="border-t border-border-subtle px-3 py-2">
+                <div className="text-[10px] text-text-quaternary font-mono">{versionLabel()}</div>
+              </div>
             </div>
           )}
         </div>

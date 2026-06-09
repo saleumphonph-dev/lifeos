@@ -87,6 +87,8 @@ export default function Dashboard() {
     return (h.completedDates || []).includes(today)
   }).length
 
+  const briefing = useMemo(() => buildBriefing(state, todayStr), [state, todayStr])
+
   return (
     <div className="space-y-5">
       {/* Hero */}
@@ -142,6 +144,43 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* AI summary — heuristic daily briefing from local data */}
+      <Card className="relative overflow-hidden">
+        <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-accent-purple/10 blur-3xl pointer-events-none" />
+        <div className="relative">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center shrink-0">
+                <Sparkles size={13} className="text-white" />
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-text-tertiary font-medium">AI summary</div>
+                <div className="text-[13.5px] font-semibold text-text-primary leading-tight">{briefing.headline}</div>
+              </div>
+            </div>
+            {briefing.mood && (
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-tertiary shrink-0">
+                <MoodDot mood={briefing.mood.mood} />
+                <span className="capitalize">{briefing.mood.mood} · energy {briefing.mood.energy}/10</span>
+              </div>
+            )}
+          </div>
+          <ul className="space-y-1.5">
+            {briefing.lines.map((l, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-[13px] text-text-secondary leading-[1.5]">
+                <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: l.color }} />
+                <span>{l.text}</span>
+              </li>
+            ))}
+          </ul>
+          {briefing.firstMove && (
+            <Link to={briefing.firstMove.to} className="inline-flex items-center gap-1.5 mt-4 h-8 px-3 rounded-sm bg-white/[0.06] hover:bg-white/[0.1] border border-border-subtle text-[12px] font-medium text-text-primary transition-colors">
+              {briefing.firstMove.text} <ArrowRight size={12} />
+            </Link>
+          )}
+        </div>
+      </Card>
 
       {/* KPI strip — all metrics computed from real state */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -314,4 +353,81 @@ function Row({ label, value, accent }) {
 function MoodDot({ mood }) {
   const map = { low: '#ff5e5e', okay: '#ffb547', good: '#4a9eff', great: '#2ee5a6', flow: '#a78bfa' }
   return <span className="w-2 h-2 rounded-full" style={{ background: map[mood] }} />
+}
+
+// Heuristic "AI summary" — a natural-language daily briefing computed entirely
+// from local state. No external API; deterministic and private.
+function buildBriefing(state, todayStr) {
+  const { tasks = [], habits = [], goals = [], journal = [], focusSessions = [] } = state
+  const open = tasks.filter(t => t.status !== 'done')
+  const prioRank = { P0: 0, P1: 1, P2: 2, P3: 3 }
+
+  const overdue = open
+    .filter(t => t.dueDate && t.dueDate < todayStr)
+    .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
+  const dueToday = open.filter(t => t.dueDate === todayStr)
+  const p0 = open.filter(t => t.priority === 'P0')
+
+  const completedToday = tasks.filter(t => t.status === 'done' && (t.completedAt || '').slice(0, 10) === todayStr).length
+  const focusMinToday = focusSessions
+    .filter(s => (s.date || s.startedAt || '').slice(0, 10) === todayStr)
+    .reduce((sum, s) => sum + (s.duration || 0), 0)
+
+  const habitsDone = habits.filter(h => (h.completedDates || []).includes(todayStr)).length
+  const habitsLeft = habits.length - habitsDone
+
+  const activeGoals = goals.filter(g => !g.archived)
+  const goalAttention = activeGoals.find(g => g.status === 'behind')
+    || [...activeGoals].sort((a, b) => (a.progress || 0) - (b.progress || 0))[0]
+
+  const lastJournal = journal[0]
+
+  const lines = []
+  if (overdue.length) {
+    lines.push({ color: '#ff5e5e', text: `${overdue.length} overdue ${overdue.length === 1 ? 'task' : 'tasks'} — oldest: “${overdue[0].title}”.` })
+  }
+  if (dueToday.length) {
+    lines.push({ color: '#ffb547', text: `${dueToday.length} due today${p0.length ? `, ${p0.length} of them P0` : ''}.` })
+  } else if (p0.length) {
+    lines.push({ color: '#ff5e5e', text: `${p0.length} P0 ${p0.length === 1 ? 'task' : 'tasks'} still open — clear those before anything else.` })
+  }
+  if (habits.length) {
+    lines.push({
+      color: habitsLeft === 0 ? '#2ee5a6' : '#a78bfa',
+      text: habitsLeft === 0 ? `All ${habits.length} habits done today — nice.` : `${habitsLeft} of ${habits.length} habits still to do.`,
+    })
+  }
+  if (goalAttention) {
+    const pct = goalAttention.progress || 0
+    lines.push({ color: '#4a9eff', text: `Goal needing attention: “${goalAttention.name}” at ${pct}%${goalAttention.status === 'behind' ? ' (behind)' : ''}.` })
+  }
+  lines.push({
+    color: '#2ee5a6',
+    text: `So far today: ${completedToday} done · ${(focusMinToday / 60).toFixed(1)}h focus.`,
+  })
+
+  // Headline
+  let headline
+  if (!tasks.length && !habits.length && !goals.length) {
+    headline = 'Clean slate — add a task or goal to get started.'
+  } else if (overdue.length) {
+    headline = `You have ${overdue.length} overdue ${overdue.length === 1 ? 'item' : 'items'} to clear first.`
+  } else if (dueToday.length || p0.length) {
+    headline = `Focused day ahead: ${(dueToday.length || p0.length)} key ${((dueToday.length || p0.length) === 1) ? 'task' : 'tasks'} to land.`
+  } else if (open.length) {
+    headline = `${open.length} open ${open.length === 1 ? 'task' : 'tasks'}, nothing overdue — good position.`
+  } else {
+    headline = 'No open tasks. Plan the day or take the win.'
+  }
+
+  // First move
+  const firstTask = overdue[0] || dueToday.sort((a, b) => prioRank[a.priority] - prioRank[b.priority])[0]
+    || [...p0][0] || [...open].sort((a, b) => prioRank[a.priority] - prioRank[b.priority])[0]
+  let firstMove = null
+  if (firstTask) firstMove = { text: `Start with “${firstTask.title}”`, to: '/projects' }
+  else if (habitsLeft > 0) firstMove = { text: 'Knock out a habit', to: '/habits' }
+  else firstMove = { text: 'Open a focus session', to: '/focus' }
+
+  const mood = lastJournal ? { mood: lastJournal.mood, energy: lastJournal.energy } : null
+  return { headline, lines: lines.slice(0, 4), firstMove, mood }
 }

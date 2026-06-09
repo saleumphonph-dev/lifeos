@@ -6,6 +6,7 @@ import { AuthProvider, useIsAuthenticated } from './state/AuthState'
 import { isSupabaseReady } from './lib/supabase'
 import { Login } from './views/Login'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { UpdatePrompt } from './components/layout/UpdatePrompt'
 
 // Lazy load all route views for code-splitting
 const Dashboard = lazy(() => import('./views/Dashboard'))
@@ -43,6 +44,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppStateProvider>
+        <UpdatePrompt />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route

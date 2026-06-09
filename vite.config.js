@@ -11,7 +11,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' so a new build waits and we can surface an in-app
+      // "Update available" banner instead of silently lagging a reload.
+      registerType: 'prompt',
+      injectRegister: false, // we register via useRegisterSW in <UpdatePrompt/>
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'LifeOS',

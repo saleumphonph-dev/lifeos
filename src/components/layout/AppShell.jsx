@@ -15,6 +15,15 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [taskOpen, setTaskOpen] = useState(false)
 
+  // Context-aware "New": on Goals/Habits/Projects, trigger that view's own
+  // add flow (via a ?new=1 signal the view reads); elsewhere, a new task.
+  function handleNew() {
+    const p = location.pathname
+    if (p.startsWith('/goals')) navigate('/goals?new=1')
+    else if (p.startsWith('/habits')) navigate('/habits?new=1')
+    else setTaskOpen(true) // Projects, Dashboard, etc. → new task
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKey(e) {
@@ -57,7 +66,7 @@ export function AppShell() {
       <Sidebar onSearch={() => setPaletteOpen(true)} />
 
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <Topbar onCommand={() => setPaletteOpen(true)} onNewTask={() => setTaskOpen(true)} />
+        <Topbar onCommand={() => setPaletteOpen(true)} onNewTask={handleNew} />
 
         <main className="flex-1 overflow-y-auto relative">
           <AnimatePresence mode="wait">
@@ -76,7 +85,7 @@ export function AppShell() {
         </main>
       </div>
 
-      <MobileTabBar onNew={() => setTaskOpen(true)} />
+      <MobileTabBar onNew={handleNew} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <NewTaskModal open={taskOpen} onClose={() => setTaskOpen(false)} />
     </div>

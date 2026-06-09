@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import * as Icons from 'lucide-react'
 import { Flame, Check, Plus, X } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
@@ -13,6 +14,16 @@ export default function Habits() {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#4a9eff')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Open the add-habit form when the global "New" button routed here.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setAdding(true)
+      searchParams.delete('new')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   function handleAdd(e) {
     e.preventDefault()

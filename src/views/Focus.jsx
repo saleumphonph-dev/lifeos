@@ -112,13 +112,14 @@ export default function Focus() {
       {/* Exit */}
       <button
         onClick={() => navigate('/dashboard')}
-        className="absolute top-5 right-5 z-20 w-9 h-9 rounded-sm glass border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+        className="absolute right-5 z-20 w-9 h-9 rounded-sm glass border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+        style={{ top: 'calc(env(safe-area-inset-top) + 14px)' }}
         title="Exit (esc)"
       >
         <X size={15} />
       </button>
 
-      <div className="absolute top-5 left-5 z-20 flex items-center gap-2">
+      <div className="absolute left-5 z-20 flex items-center gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 14px)' }}>
         <div className="w-7 h-7 rounded-[8px] bg-gradient-to-br from-accent-blue to-accent-emerald flex items-center justify-center">
           <span className="font-display text-[14px] text-bg-base leading-none">L</span>
         </div>

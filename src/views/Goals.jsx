@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Target, Calendar, TrendingUp, Compass, Plus, X } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge, statusTone } from '../components/ui/Badge'
@@ -24,6 +25,17 @@ export default function Goals() {
   const [newMetric, setNewMetric] = useState('percent') // 'percent' | 'lak' | 'usd'
   const [newCurrent, setNewCurrent] = useState('')
   const [newTarget, setNewTarget] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Open the add-goal form when the global "New" button routed here.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setAdding(true)
+      setShowArchived(false)
+      searchParams.delete('new')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   function handleAdd(e) {
     e.preventDefault()

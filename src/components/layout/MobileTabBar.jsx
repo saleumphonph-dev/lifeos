@@ -9,11 +9,11 @@ import { cn } from '../../lib/utils'
 const TABS = [
   { to: '/dashboard', label: 'Home',   icon: Home },
   { to: '/projects',  label: 'Plan',   icon: KanbanSquare },
+  { to: '/focus',     label: 'Focus',  icon: Focus },
   { to: '/journal',   label: 'Journal',icon: BookOpen },
 ]
 
 const MORE_ITEMS = [
-  { to: '/focus',     label: 'Focus',     icon: Focus,     desc: 'Pomodoro timer' },
   { to: '/analytics', label: 'Analytics', icon: BarChart3, desc: 'Heatmap & trends' },
   { to: '/goals',     label: 'Goals',     icon: Target,    desc: 'Track horizons' },
   { to: '/habits',    label: 'Habits',    icon: Repeat,    desc: 'Daily streaks' },
@@ -34,9 +34,10 @@ export function MobileTabBar({ onNew }) {
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 glass border-t border-border-subtle"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="h-16 grid grid-cols-5 items-center">
+        <div className="h-16 grid grid-cols-6 items-center">
           <Tab tab={TABS[0]} />
           <Tab tab={TABS[1]} />
+          <Tab tab={TABS[2]} />
           <div className="flex items-center justify-center">
             <button
               onClick={onNew ?? (() => nav('/projects'))}
@@ -45,7 +46,7 @@ export function MobileTabBar({ onNew }) {
               <Plus size={20} strokeWidth={2.5} />
             </button>
           </div>
-          <Tab tab={TABS[2]} />
+          <Tab tab={TABS[3]} />
           <button
             onClick={() => setDrawerOpen(true)}
             className="flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium text-text-tertiary"

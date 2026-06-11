@@ -33,6 +33,22 @@ export function defaultIdentity() {
     selfWorthNote: '',
     circleNow: Array.from({ length: 5 }, () => ({ name: '', note: '' })),
     circleAspire: Array.from({ length: 5 }, () => ({ name: '', note: '' })),
+    // Munger-style inversion: the surest ways to fail. Avoid all of these
+    // and success largely takes care of itself. `clear` = staying clear of it.
+    failurePaths: [
+      { id: 'f1', text: 'Break your word — be unreliable.', clear: false },
+      { id: 'f2', text: 'Stop learning; let your edge go dull.', clear: false },
+      { id: 'f3', text: "Only learn from your own mistakes, never others'.", clear: false },
+      { id: 'f4', text: 'Quit at the first hard setback.', clear: false },
+      { id: 'f5', text: 'Let envy, resentment or self-pity steer decisions.', clear: false },
+      { id: 'f6', text: 'Neglect health, sleep and exercise.', clear: false },
+      { id: 'f7', text: 'Make big decisions tired, rushed or emotional.', clear: false },
+      { id: 'f8', text: 'Spread across too many bets with no focus.', clear: false },
+      { id: 'f9', text: 'Avoid the numbers and the hard truths.', clear: false },
+      { id: 'f10', text: 'Keep company that drags you down.', clear: false },
+      { id: 'f11', text: 'Spend the seed corn — stop reinvesting.', clear: false },
+      { id: 'f12', text: 'Trust without verifying; ignore the incentives.', clear: false },
+    ],
   }
 }
 

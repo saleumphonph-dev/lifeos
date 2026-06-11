@@ -1,8 +1,48 @@
 import { useState } from 'react'
-import { Heart, Sparkles, Globe, Coins, X, Users, ArrowUpRight, Crown } from 'lucide-react'
+import { Heart, Sparkles, Globe, Coins, X, Users, ArrowUpRight, Crown, TrendingDown, Check, Plus } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { useApp, defaultIdentity } from '../state/AppState'
 import { cn, uid } from '../lib/utils'
+
+// Classic Ikigai Venn: four overlapping circles in a diamond. Screen blend
+// brightens the overlaps so the lens regions read clearly on the dark bg.
+function IkigaiVenn() {
+  const circles = [
+    { cx: 200, cy: 132, color: '#ff7eb3' }, // top — LOVE
+    { cx: 132, cy: 200, color: '#4a9eff' }, // left — GOOD AT
+    { cx: 268, cy: 200, color: '#2ee5a6' }, // right — WORLD NEEDS
+    { cx: 200, cy: 268, color: '#ffb547' }, // bottom — PAID FOR
+  ]
+  return (
+    <svg viewBox="0 0 400 400" className="w-full max-w-[420px] mx-auto block" role="img" aria-label="Ikigai diagram">
+      <g style={{ mixBlendMode: 'screen' }}>
+        {circles.map((c, i) => (
+          <circle key={i} cx={c.cx} cy={c.cy} r="118" fill={c.color} fillOpacity="0.18" stroke={c.color} strokeOpacity="0.5" strokeWidth="1" />
+        ))}
+      </g>
+      {/* Main circle labels (outer caps) */}
+      <g fontFamily="inherit" textAnchor="middle" fill="#f5f5f7" fontWeight="600">
+        <text x="200" y="44" fontSize="14">LOVE</text>
+        <text x="200" y="50" fontSize="9" fill="#ff7eb3" dy="12">what you love</text>
+        <text x="64" y="198" fontSize="14">GOOD AT</text>
+        <text x="64" y="204" fontSize="9" fill="#4a9eff" dy="12">what you're good at</text>
+        <text x="336" y="198" fontSize="14">NEEDS</text>
+        <text x="336" y="204" fontSize="9" fill="#2ee5a6" dy="12">what the world needs</text>
+        <text x="200" y="366" fontSize="14">PAID FOR</text>
+        <text x="200" y="372" fontSize="9" fill="#ffb547" dy="12">what you're paid for</text>
+      </g>
+      {/* Overlap (lens) labels */}
+      <g fontFamily="inherit" textAnchor="middle" fill="#e9e9ee" fontSize="9" letterSpacing="0.5">
+        <text x="150" y="158">PASSION</text>
+        <text x="250" y="158">MISSION</text>
+        <text x="150" y="248">PROFESSION</text>
+        <text x="250" y="248">VOCATION</text>
+      </g>
+      {/* Center */}
+      <text x="200" y="204" textAnchor="middle" fontSize="15" fontWeight="700" fill="#fff" letterSpacing="1">IKIGAI</text>
+    </svg>
+  )
+}
 
 const IKIGAI = [
   { key: 'love',       label: 'What I love',          hint: 'Energizes you, you lose time doing it', icon: Heart,    color: '#ff7eb3' },
@@ -44,6 +84,23 @@ export default function Identity() {
     const arr = [...(identity[field] || [])]
     arr[idx] = { ...arr[idx], [key]: value }
     update({ [field]: arr })
+  }
+
+  const failurePaths = identity.failurePaths || defaultIdentity().failurePaths
+  const [newFail, setNewFail] = useState('')
+  const clearedCount = failurePaths.filter(f => f.clear).length
+  function toggleFail(id) {
+    update({ failurePaths: failurePaths.map(f => (f.id === id ? { ...f, clear: !f.clear } : f)) })
+  }
+  function addFail(e) {
+    e.preventDefault()
+    const text = newFail.trim()
+    if (!text) return
+    update({ failurePaths: [...failurePaths, { id: uid(), text, clear: false }] })
+    setNewFail('')
+  }
+  function removeFail(id) {
+    update({ failurePaths: failurePaths.filter(f => f.id !== id) })
   }
 
   const vibe = worthVibe(identity.selfWorth)
@@ -105,6 +162,8 @@ export default function Identity() {
       {/* Ikigai */}
       <Card>
         <CardHeader eyebrow="Ikigai · 生き甲斐" title="My reason for being" />
+        <IkigaiVenn />
+        <div className="text-[11px] text-text-quaternary text-center -mt-1 mb-4">Where all four meet is your ikigai. Fill each below.</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {IKIGAI.map(f => (
             <div key={f.key} className="rounded-md border border-border-subtle bg-white/[0.02] p-3.5">
@@ -185,6 +244,69 @@ export default function Identity() {
           onChange={setCircle}
         />
       </div>
+
+      {/* Road to failure — inversion */}
+      <Card>
+        <div className="flex items-start gap-2.5 mb-1">
+          <div className="w-7 h-7 rounded-[7px] bg-accent-red/15 flex items-center justify-center shrink-0">
+            <TrendingDown size={14} className="text-accent-red" />
+          </div>
+          <div className="flex-1">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-text-tertiary font-medium">Invert, always invert</div>
+            <div className="text-[15px] font-semibold text-text-primary leading-tight">The road to failure</div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="font-mono tnum text-[15px] text-text-primary">{clearedCount}/{failurePaths.length}</div>
+            <div className="text-[10px] text-text-quaternary">avoided</div>
+          </div>
+        </div>
+        <p className="text-[12px] text-text-tertiary leading-snug mb-3">
+          Munger's rule: figure out how you'd guarantee failure — then never do it. Steer clear of all of these and success largely takes care of itself.
+        </p>
+        <ul className="space-y-1.5">
+          {failurePaths.map(f => (
+            <li key={f.id} className="group flex items-center gap-2.5">
+              <button
+                onClick={() => toggleFail(f.id)}
+                className={cn(
+                  'w-5 h-5 rounded-[6px] border flex items-center justify-center shrink-0 transition-colors',
+                  f.clear ? 'bg-accent-emerald/20 border-accent-emerald/50 text-accent-emerald' : 'border-border-subtle text-transparent hover:border-accent-emerald/40'
+                )}
+                title={f.clear ? 'Staying clear' : 'Mark as avoided'}
+              >
+                <Check size={12} strokeWidth={3} />
+              </button>
+              <span className={cn('flex-1 text-[13px] leading-[1.5]', f.clear ? 'text-text-tertiary line-through' : 'text-text-secondary')}>
+                {f.text}
+              </span>
+              <button
+                onClick={() => removeFail(f.id)}
+                className="opacity-0 group-hover:opacity-100 text-text-quaternary hover:text-accent-red transition-opacity shrink-0"
+                title="Remove"
+              >
+                <X size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={addFail} className="mt-3 flex items-center gap-2">
+          <input
+            value={newFail}
+            onChange={(e) => setNewFail(e.target.value)}
+            placeholder="Add a way you'd fail…"
+            spellCheck="true" autoCapitalize="sentences"
+            className="flex-1 h-9 px-3 rounded-sm bg-white/[0.03] border border-border-subtle text-[13px] text-text-primary outline-none focus:border-border placeholder:text-text-quaternary"
+          />
+          <button type="submit" className="w-9 h-9 rounded-sm border border-border-subtle bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-secondary shrink-0">
+            <Plus size={14} />
+          </button>
+        </form>
+        {clearedCount === failurePaths.length && failurePaths.length > 0 && (
+          <div className="mt-3 text-[12px] text-accent-emerald flex items-center gap-1.5">
+            <Check size={13} /> All clear. Keep it that way — that's the whole game.
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

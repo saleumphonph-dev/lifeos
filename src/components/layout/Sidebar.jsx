@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, KanbanSquare, Focus, BarChart3, BookOpen,
-  Target, Repeat, Sparkles, Command, Search, LogOut,
+  Target, Repeat, Sparkles, Command, Search, LogOut, Fingerprint,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
@@ -18,6 +18,7 @@ export const NAV = [
   { to: '/goals',     label: 'Goals',     icon: Target,           shortcut: '6' },
   { to: '/habits',    label: 'Habits',    icon: Repeat,           shortcut: '7' },
   { to: '/ai',        label: 'AI',        icon: Sparkles,         shortcut: '8' },
+  { to: '/identity',  label: 'Identity',  icon: Fingerprint,      shortcut: '9' },
 ]
 
 export function Sidebar({ onSearch }) {

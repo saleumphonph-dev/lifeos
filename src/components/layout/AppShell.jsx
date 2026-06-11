@@ -42,8 +42,8 @@ export function AppShell() {
         setTaskOpen(true)
         return
       }
-      // 1-8 — switch views
-      if (/^[1-8]$/.test(e.key)) {
+      // 1-9 — switch views
+      if (/^[1-9]$/.test(e.key)) {
         const target = NAV[Number(e.key) - 1]
         if (target) navigate(target.to)
       }

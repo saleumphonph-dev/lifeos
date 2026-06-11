@@ -16,9 +16,29 @@ import {
 
 const STORAGE_KEY = 'state.v1'
 
+// Default shape for the self-reflection / Identity module.
+export function defaultIdentity() {
+  return {
+    ikigai: { love: '', goodAt: '', worldNeeds: '', paidFor: '', statement: '' },
+    hats: [
+      { id: 'h-founder', label: 'Founder' },
+      { id: 'h-operator', label: 'Operator' },
+      { id: 'h-investor', label: 'Investor' },
+      { id: 'h-creator', label: 'Creator' },
+      { id: 'h-family', label: 'Family' },
+      { id: 'h-learner', label: 'Learner' },
+    ],
+    activeHatId: null,
+    selfWorth: 70,
+    selfWorthNote: '',
+    circleNow: Array.from({ length: 5 }, () => ({ name: '', note: '' })),
+    circleAspire: Array.from({ length: 5 }, () => ({ name: '', note: '' })),
+  }
+}
+
 const initialState = () => {
   const persisted = storage.get(STORAGE_KEY)
-  if (persisted) return { ...persisted, _isSeed: false }
+  if (persisted) return { ...persisted, identity: persisted.identity || defaultIdentity(), _isSeed: false }
   // Fresh device — start with seed data, but flag so we don't push it
   // to Supabase before we've had a chance to pull the real cloud state.
   return {
@@ -30,6 +50,7 @@ const initialState = () => {
     journal: SEED_JOURNAL,
     focusSessions: SEED_FOCUS,
     settings: { soundsEnabled: true, focusDuration: 25, breakDuration: 5 },
+    identity: defaultIdentity(),
     _isSeed: true,
     lastModifiedAt: null,
   }
@@ -132,6 +153,8 @@ function reducerCore(state, action) {
     }
     case 'focus.complete':
       return { ...state, focusSessions: [{ id: uid(), ...action.session }, ...state.focusSessions] }
+    case 'identity.update':
+      return { ...state, identity: { ...defaultIdentity(), ...(state.identity || {}), ...action.patch } }
     case 'goal.add':
       return {
         ...state,

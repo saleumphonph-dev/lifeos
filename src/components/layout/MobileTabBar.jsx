@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home, KanbanSquare, BookOpen, Focus, Plus, MoreHorizontal,
-  BarChart3, Target, Repeat, Sparkles, X,
+  BarChart3, Target, Repeat, Sparkles, X, Fingerprint,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -17,6 +17,7 @@ const MORE_ITEMS = [
   { to: '/analytics', label: 'Analytics', icon: BarChart3, desc: 'Heatmap & trends' },
   { to: '/goals',     label: 'Goals',     icon: Target,    desc: 'Track horizons' },
   { to: '/habits',    label: 'Habits',    icon: Repeat,    desc: 'Daily streaks' },
+  { to: '/identity',  label: 'Identity',  icon: Fingerprint, desc: 'Ikigai & self-reflection' },
   { to: '/ai',        label: 'AI',        icon: Sparkles,  desc: 'Productivity assistant' },
 ]
 

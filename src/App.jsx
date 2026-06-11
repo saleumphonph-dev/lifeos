@@ -17,6 +17,7 @@ const Journal = lazy(() => import('./views/Journal'))
 const Goals = lazy(() => import('./views/Goals'))
 const Habits = lazy(() => import('./views/Habits'))
 const AIAssistant = lazy(() => import('./views/AIAssistant'))
+const Identity = lazy(() => import('./views/Identity'))
 
 function RouteLoader() {
   return (
@@ -63,6 +64,7 @@ export default function App() {
             <Route path="/goals" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Goals /></Suspense></ErrorBoundary>} />
             <Route path="/habits" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Habits /></Suspense></ErrorBoundary>} />
             <Route path="/ai" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><AIAssistant /></Suspense></ErrorBoundary>} />
+            <Route path="/identity" element={<ErrorBoundary><Suspense fallback={<RouteLoader />}><Identity /></Suspense></ErrorBoundary>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
